@@ -19,5 +19,8 @@ export function checkoutPR(
   baseRef: string
 ): void {
   execSync(`git fetch origin`, { cwd, stdio: "inherit" });
-  execSync(`git checkout "${headRef}"`, { cwd, stdio: "inherit" });
+  execSync(`git checkout -B "${headRef}" "origin/${headRef}"`, {
+    cwd,
+    stdio: "inherit",
+  });
 }
