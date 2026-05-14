@@ -18,8 +18,10 @@ export function checkoutPR(
   headRef: string,
   baseRef: string
 ): void {
-  execSync(`git fetch origin`, { cwd, stdio: "inherit" });
-  execSync(`git checkout -B "${headRef}" "origin/${headRef}"`, {
+  // Snapshot repos are shallow clones (--depth=1), so we can't just
+  // git fetch origin and expect all branches. Fetch the specific branch.
+  execSync(`git fetch origin "${headRef}"`, { cwd, stdio: "inherit" });
+  execSync(`git checkout -B "${headRef}" FETCH_HEAD`, {
     cwd,
     stdio: "inherit",
   });
