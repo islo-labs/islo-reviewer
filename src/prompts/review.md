@@ -27,16 +27,20 @@ Use these to understand how the changed code interacts with the rest of the syst
 
 3. **Evaluate the approach.** Does this change make sense architecturally? Is there a simpler way? Are there maintainability concerns?
 
-4. **Post your review.** When done, post a single comment using:
+4. **Post your review.** Submit a GitHub pull request review with inline comments on specific lines. Use `gh api` to create the review:
 
 ```
-gh pr comment {{PR_NUMBER}} --repo {{REPO}} --body "YOUR REVIEW"
+gh api repos/{{REPO}}/pulls/{{PR_NUMBER}}/reviews \
+  --method POST \
+  -f event="COMMENT" \
+  -f body="**Summary**: your overall review summary here" \
+  -f 'comments[][path]=path/to/file.ts' \
+  -f 'comments[][line]=42' \
+  -f 'comments[][body]=Your inline comment here'
 ```
 
-Format as markdown with these sections:
-- **Summary**: 1-2 sentences on what the PR does
-- **Issues**: Concrete bugs or problems found (if any)
-- **Suggestions**: Improvements worth considering (if any)
-- **Verdict**: Your overall assessment
+For each issue or suggestion, add an inline comment on the relevant line in the diff. The `body` field is your overall summary. The `comments` array contains line-level feedback.
+
+Keep the summary brief (2-3 sentences). Put the detail in the inline comments where it's most useful.
 
 Be constructive, not nitpicky. Focus on things that matter. Don't comment on lint, formatting, or test failures — CI and the babysit bot handle those separately.
