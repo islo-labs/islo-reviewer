@@ -1,14 +1,12 @@
 CI has failed for PR #{{PR_NUMBER}} in {{REPO}}. Your job is to fix the failure and get CI green.
 
-## CI Failure Logs
+Failed run ID: {{RUN_ID}}
 
-{{CI_LOGS}}
+You are inside an isolated sandbox VM. You have full root access and can do whatever you need — install packages, start services, run the app locally to reproduce issues. This is your sandbox, use it freely.
 
 ## Instructions
 
-You have full access to the repository at your current working directory.
-
-1. **Read the logs.** Understand exactly what failed and why.
+1. **Read the CI logs.** Run `gh run view {{RUN_ID}} --repo {{REPO}} --log-failed` to see what failed. Understand exactly what went wrong and why.
 
 2. **Fix only mechanical issues.** You may fix:
    - Lint and formatting errors
@@ -18,7 +16,9 @@ You have full access to the repository at your current working directory.
 
 3. **Do NOT change logic or architecture.** If the failure requires a design change, a new approach, or touching business logic — do NOT fix it. Instead, post a comment explaining what's wrong and let the author handle it.
 
-4. **Push the fix.** Commit and push your changes:
+4. **Verify your fix.** Run the failing command locally to confirm the fix works before pushing.
+
+5. **Push the fix.** Commit and push your changes:
 
 ```
 git add -A
@@ -26,7 +26,7 @@ git commit -m "fix: <brief description of what was fixed>"
 git push
 ```
 
-5. **Post an update.** After pushing (or if you can't fix the issue), post a comment:
+6. **Post an update.** After pushing (or if you can't fix the issue), post a comment:
 
 ```
 gh pr comment {{PR_NUMBER}} --repo {{REPO}} --body "YOUR UPDATE"

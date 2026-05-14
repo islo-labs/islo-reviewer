@@ -51,20 +51,6 @@ export function getPRFromRun(repo: string, runId: string): PRFromRun {
   };
 }
 
-export function getCILogs(repo: string, runId: string): string {
-  try {
-    return execSync(
-      `gh run view ${runId} --repo ${repo} --log-failed`,
-      { maxBuffer: 10 * 1024 * 1024 }
-    ).toString();
-  } catch {
-    return execSync(
-      `gh run view ${runId} --repo ${repo} --log`,
-      { maxBuffer: 10 * 1024 * 1024 }
-    ).toString();
-  }
-}
-
 export function getRecentBotCommits(cwd: string): number {
   try {
     const log = execSync(

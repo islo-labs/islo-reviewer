@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { ensureRepo, checkoutPR } from "./utils/git.js";
-import { getPRFromRun, getCILogs, getRecentBotCommits } from "./utils/github.js";
+import { getPRFromRun, getRecentBotCommits } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,9 +32,6 @@ if (botCommits >= 3) {
   process.exit(0);
 }
 
-const ciLogs = getCILogs(repo, runId);
-console.log(`CI log size: ${ciLogs.length} chars`);
-
 const promptTemplate = readFileSync(
   join(__dirname, "prompts", "babysit.md"),
   "utf-8"
@@ -42,7 +39,7 @@ const promptTemplate = readFileSync(
 const prompt = promptTemplate
   .replaceAll("{{REPO}}", repo)
   .replaceAll("{{PR_NUMBER}}", prNumber)
-  .replaceAll("{{CI_LOGS}}", ciLogs);
+  .replaceAll("{{RUN_ID}}", runId);
 
 for await (const message of query({
   prompt,
