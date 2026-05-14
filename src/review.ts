@@ -2,7 +2,7 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { checkoutPR, getDiff } from "./utils/git.js";
+import { checkoutPR } from "./utils/git.js";
 import { getPRInfo } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -22,8 +22,6 @@ const { headRef, baseRef } = getPRInfo(repo, prNumber);
 console.log(`Branch: ${headRef} -> ${baseRef}`);
 
 checkoutPR(cwd, headRef, baseRef);
-const diff = getDiff(cwd, baseRef, headRef);
-console.log(`Diff size: ${diff.length} chars`);
 
 const promptTemplate = readFileSync(
   join(__dirname, "prompts", "review.md"),
@@ -32,7 +30,8 @@ const promptTemplate = readFileSync(
 const prompt = promptTemplate
   .replaceAll("{{REPO}}", repo)
   .replaceAll("{{PR_NUMBER}}", prNumber)
-  .replaceAll("{{DIFF}}", diff);
+  .replaceAll("{{HEAD_REF}}", headRef)
+  .replaceAll("{{BASE_REF}}", baseRef);
 
 for await (const message of query({
   prompt,
