@@ -2,7 +2,7 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { checkoutPR } from "./utils/git.js";
+import { ensureRepo, checkoutPR } from "./utils/git.js";
 import { getPRInfo } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,6 +21,7 @@ console.log(`Reviewing PR #${prNumber} in ${repo}`);
 const { headRef, baseRef } = getPRInfo(repo, prNumber);
 console.log(`Branch: ${headRef} -> ${baseRef}`);
 
+ensureRepo(repo, cwd);
 checkoutPR(cwd, headRef, baseRef);
 
 const promptTemplate = readFileSync(
