@@ -2,7 +2,7 @@ You are reviewing PR #{{PR_NUMBER}} in {{REPO}}.
 
 Branch: {{HEAD_REF}} → {{BASE_REF}}
 
-You are on the PR branch and have full access to the repository. Use `git`, `gh`, and any tools you need.
+You are on the PR branch inside an isolated sandbox VM. You have full root access and can do whatever you need — install packages, start services, run databases, build and run the app. This is your sandbox, use it freely.
 
 The full Islo stack is available at `/workspace/` for cross-repo context:
 - `/workspace/islo-web-api` — Python/FastAPI backend
@@ -25,9 +25,11 @@ Use these to understand how the changed code interacts with the rest of the syst
    - Performance issues
    - Unclear naming or confusing logic
 
-3. **Evaluate the approach.** Does this change make sense architecturally? Is there a simpler way? Are there maintainability concerns?
+3. **Test if useful.** If the change is testable locally, try it. Start a database, run the dev server, exercise the changed code path — whatever helps you verify correctness. You have a full VM.
 
-4. **Post your review.** Submit a GitHub pull request review with inline comments on specific lines. Use `gh api` to create the review:
+4. **Evaluate the approach.** Does this change make sense architecturally? Is there a simpler way? Are there maintainability concerns?
+
+5. **Post your review.** Submit a GitHub pull request review with inline comments on specific lines. Use `gh api` to create the review:
 
 ```
 gh api repos/{{REPO}}/pulls/{{PR_NUMBER}}/reviews \
