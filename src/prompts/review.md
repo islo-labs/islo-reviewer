@@ -4,9 +4,19 @@ Branch: {{HEAD_REF}} → {{BASE_REF}}
 
 You are on the PR branch and have full access to the repository. Use `git`, `gh`, and any tools you need.
 
+The full Islo stack is available at `/workspace/` for cross-repo context:
+- `/workspace/islo-web-api` — Python/FastAPI backend
+- `/workspace/islo-frontend` — React frontend
+- `/workspace/bear-agent` — Rust VM manager
+- `/workspace/islo-cli` — Rust CLI
+- `/workspace/islo-gateway` — Gateway service
+- `/workspace/islo-devops` — Infrastructure (Terraform/Ansible)
+
+Use these to understand how the changed code interacts with the rest of the system — check API contracts, shared types, caller/callee relationships across repos, etc.
+
 ## Instructions
 
-1. **Understand the change.** Run `gh pr view {{PR_NUMBER}} --repo {{REPO}}` to read the PR description. Run `gh pr diff {{PR_NUMBER}} --repo {{REPO}}` to see the diff. Explore changed files and surrounding code for context.
+1. **Understand the change.** Run `gh pr view {{PR_NUMBER}} --repo {{REPO}}` to read the PR description. Run `gh pr diff {{PR_NUMBER}} --repo {{REPO}}` to see the diff. Explore changed files and surrounding code for context. Check other repos in `/workspace/` if the change affects cross-repo interfaces.
 
 2. **Run tests and linters.** If the repo has tests or linters, run them. Report any failures.
 
