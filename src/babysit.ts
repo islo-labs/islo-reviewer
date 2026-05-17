@@ -47,7 +47,8 @@ for await (const message of query({
     cwd,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
-    maxTurns: 15,
+    maxTurns: 50,
+    model: "claude-opus-4-6",
   },
 })) {
   if (message.type === "assistant") {
