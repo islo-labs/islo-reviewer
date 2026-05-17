@@ -41,7 +41,7 @@ for await (const message of query({
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     maxTurns: 50,
-    model: "claude-opus-4-6-20250616",
+    model: "claude-opus-4-6",
   },
 })) {
   if (message.type === "assistant") {
