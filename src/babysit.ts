@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { ensureRepo, checkoutPR } from "./utils/git.js";
@@ -36,10 +36,19 @@ const promptTemplate = readFileSync(
   join(__dirname, "prompts", "babysit.md"),
   "utf-8"
 );
-const prompt = promptTemplate
-  .replaceAll("{{REPO}}", repo)
-  .replaceAll("{{PR_NUMBER}}", prNumber)
-  .replaceAll("{{RUN_ID}}", runId);
+
+let contextSection = "";
+const contextPath = join(cwd, ".github", "islo-reviewer.md");
+if (existsSync(contextPath)) {
+  contextSection =
+    "\n\n## Repository Context\n\n" + readFileSync(contextPath, "utf-8");
+}
+
+const prompt =
+  promptTemplate
+    .replaceAll("{{REPO}}", repo)
+    .replaceAll("{{PR_NUMBER}}", prNumber)
+    .replaceAll("{{RUN_ID}}", runId) + contextSection;
 
 for await (const message of query({
   prompt,

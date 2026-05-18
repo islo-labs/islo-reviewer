@@ -1,0 +1,75 @@
+name: 'Islo Babysit CI'
+description: 'Automated CI failure fixer powered by Islo sandboxes and Claude'
+
+inputs:
+  run_id:
+    description: 'GitHub Actions workflow run ID that failed'
+    required: true
+  islo_config:
+    description: 'Path to islo.yaml for sandbox config (e.g., .github/islo-review.yaml). Triggers repo checkout.'
+    required: false
+    default: ''
+  snapshot:
+    description: 'Sandbox snapshot name'
+    required: false
+    default: ''
+  cpu:
+    description: 'CPU cores for the sandbox'
+    required: false
+    default: '4'
+  memory:
+    description: 'Memory in MB for the sandbox'
+    required: false
+    default: '4096'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install islo CLI
+      shell: bash
+      run: curl -fsSL https://islo.dev/install.sh | sh
+
+    - name: Checkout repo
+      if: inputs.islo_config != ''
+      uses: actions/checkout@v4
+
+    - name: Create sandbox
+      shell: bash
+      env:
+        SANDBOX: babysit-${{ github.event.repository.name }}-${{ inputs.run_id }}
+      run: |
+        ARGS=""
+        if [ -n "${{ inputs.islo_config }}" ]; then
+          ARGS="$ARGS --config ${{ inputs.islo_config }}"
+        else
+          ARGS="$ARGS --no-config"
+        fi
+        if [ -n "${{ inputs.snapshot }}" ]; then
+          ARGS="$ARGS --snapshot ${{ inputs.snapshot }}"
+        fi
+        islo use "${SANDBOX}" \
+          $ARGS \
+          --cpu ${{ inputs.cpu }} --memory ${{ inputs.memory }} \
+          -- echo "Sandbox ready"
+
+    - name: Babysit
+      shell: bash
+      env:
+        SANDBOX: babysit-${{ github.event.repository.name }}-${{ inputs.run_id }}
+      run: |
+        islo use "${SANDBOX}" -- bash -c '
+          set -euo pipefail
+          cd /workspace
+          git clone https://github.com/islo-labs/islo-reviewer.git
+          cd islo-reviewer && npm ci
+          npx tsx src/babysit.ts \
+            "'"${{ github.repository }}"'" \
+            "'"${{ inputs.run_id }}"'"
+        '
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      env:
+        SANDBOX: babysit-${{ github.event.repository.name }}-${{ inputs.run_id }}
+      run: islo rm "${SANDBOX}" --force || true
