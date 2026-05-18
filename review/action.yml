@@ -1,0 +1,90 @@
+name: 'Islo PR Review'
+description: 'Automated PR review powered by Islo sandboxes and Claude'
+
+inputs:
+  pr_number:
+    description: 'PR number to review'
+    required: true
+  islo_config:
+    description: 'Path to islo.yaml for sandbox config (e.g., .github/islo-review.yaml). Triggers repo checkout.'
+    required: false
+    default: ''
+  snapshot:
+    description: 'Sandbox snapshot name'
+    required: false
+    default: ''
+  cpu:
+    description: 'CPU cores for the sandbox'
+    required: false
+    default: '4'
+  memory:
+    description: 'Memory in MB for the sandbox'
+    required: false
+    default: '4096'
+  model:
+    description: 'Claude model to use (e.g., claude-opus-4-6, claude-sonnet-4)'
+    required: false
+    default: 'claude-opus-4-6'
+  max_turns:
+    description: 'Maximum agentic turns (tool-use round trips)'
+    required: false
+    default: '50'
+  max_budget_usd:
+    description: 'Stop when cost estimate reaches this USD value (empty = unlimited)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install islo CLI
+      shell: bash
+      run: curl -fsSL https://islo.dev/install.sh | sh
+
+    - name: Checkout repo
+      if: inputs.islo_config != ''
+      uses: actions/checkout@v4
+
+    - name: Create sandbox
+      shell: bash
+      env:
+        SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+      run: |
+        ARGS=""
+        if [ -n "${{ inputs.islo_config }}" ]; then
+          ARGS="$ARGS --config ${{ inputs.islo_config }}"
+        else
+          ARGS="$ARGS --no-config"
+        fi
+        if [ -n "${{ inputs.snapshot }}" ]; then
+          ARGS="$ARGS --snapshot ${{ inputs.snapshot }}"
+        fi
+        islo use "${SANDBOX}" \
+          $ARGS \
+          --cpu ${{ inputs.cpu }} --memory ${{ inputs.memory }} \
+          -- echo "Sandbox ready"
+
+    - name: Review
+      shell: bash
+      env:
+        SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+      run: |
+        islo use "${SANDBOX}" -- bash -c '
+          set -euo pipefail
+          cd /workspace
+          git clone https://github.com/islo-labs/islo-reviewer.git
+          cd islo-reviewer && npm ci
+          npx tsx src/review.ts \
+            "'"${{ github.repository }}"'" \
+            "'"${{ inputs.pr_number }}"'" \
+            "'"${{ inputs.model }}"'" \
+            "'"${{ inputs.max_turns }}"'" \
+            "'"${{ inputs.max_budget_usd }}"'"
+        '
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      env:
+        SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+      run: islo rm "${SANDBOX}" --force || true

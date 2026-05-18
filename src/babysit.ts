@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { ensureRepo, checkoutPR } from "./utils/git.js";
@@ -7,9 +7,9 @@ import { getPRFromRun, getRecentBotCommits } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [repo, runId] = process.argv.slice(2);
+const [repo, runId, model, maxTurnsStr, maxBudgetStr] = process.argv.slice(2);
 if (!repo || !runId) {
-  console.error("Usage: tsx src/babysit.ts <owner/repo> <run-id>");
+  console.error("Usage: tsx src/babysit.ts <owner/repo> <run-id> [model] [max-turns] [max-budget-usd]");
   process.exit(1);
 }
 
@@ -36,10 +36,19 @@ const promptTemplate = readFileSync(
   join(__dirname, "prompts", "babysit.md"),
   "utf-8"
 );
-const prompt = promptTemplate
-  .replaceAll("{{REPO}}", repo)
-  .replaceAll("{{PR_NUMBER}}", prNumber)
-  .replaceAll("{{RUN_ID}}", runId);
+
+let contextSection = "";
+const contextPath = join(cwd, ".github", "islo-reviewer.md");
+if (existsSync(contextPath)) {
+  contextSection =
+    "\n\n## Repository Context\n\n" + readFileSync(contextPath, "utf-8");
+}
+
+const prompt =
+  promptTemplate
+    .replaceAll("{{REPO}}", repo)
+    .replaceAll("{{PR_NUMBER}}", prNumber)
+    .replaceAll("{{RUN_ID}}", runId) + contextSection;
 
 for await (const message of query({
   prompt,
@@ -47,8 +56,9 @@ for await (const message of query({
     cwd,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
-    maxTurns: 50,
-    model: "claude-opus-4-6",
+    maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
+    model: model || "claude-opus-4-6",
+    ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
   },
 })) {
   if (message.type === "assistant") {
