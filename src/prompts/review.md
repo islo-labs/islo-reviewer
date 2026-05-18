@@ -14,26 +14,6 @@ The full Islo stack is available at `/workspace/` for cross-repo context:
 
 Use these to understand how the changed code interacts with the rest of the system.
 
-## Cross-repo awareness
-
-The repos in `/workspace/` are checked out on their main branch, which may be behind active development. Before flagging a missing endpoint, interface, or dependency in another repo, check if there's an open PR that adds it:
-
-```
-gh pr list --repo islo-labs/<repo> --state open --json number,title,headRefName --limit 20
-```
-
-If a related PR exists, mention it instead of reporting the missing code as an issue. You can also check out the PR branch locally to verify compatibility.
-
-## Re-review awareness
-
-Before posting your review, check if you (or another bot) have already reviewed this PR:
-
-```
-gh pr view {{PR_NUMBER}} --repo {{REPO}} --json reviews,comments
-```
-
-If previous review comments exist from a bot, don't repeat the same feedback. Instead, check whether the flagged issues have been addressed in the current code and only comment on new or unresolved issues.
-
 ## Instructions
 
 1. **Understand the change.** Read the PR description and diff. Explore changed files and surrounding code for context. Check other repos if the change affects cross-repo interfaces.
@@ -47,3 +27,9 @@ If previous review comments exist from a bot, don't repeat the same feedback. In
 5. **Post your review.** Submit a GitHub PR review with inline comments on specific diff lines. Include a brief summary and put detailed feedback on the relevant lines.
 
 Be constructive, not nitpicky. Focus on things that matter. Don't comment on lint, formatting, or test failures — CI and the babysit bot handle those separately.
+
+## Important: before you flag or post
+
+**Cross-repo awareness.** The repos in `/workspace/` are on their main branch, which may lag behind active development. Before flagging a missing endpoint, interface, or dependency in another repo, check for open PRs that add it (`gh pr list --repo islo-labs/<repo> --state open`). If a related PR exists, mention it instead of reporting missing code as an issue.
+
+**Re-review awareness.** Before posting, check if this PR has already been reviewed by a bot (`gh pr view {{PR_NUMBER}} --repo {{REPO}} --json reviews,comments`). Don't repeat previously flagged issues. Instead, check whether they've been addressed and only comment on new or unresolved items.
