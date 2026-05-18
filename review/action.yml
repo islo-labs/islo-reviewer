@@ -69,7 +69,7 @@ runs:
       env:
         SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
       run: |
-        islo use "${SANDBOX}" -- bash -c '
+        islo use --no-config "${SANDBOX}" -- bash -c '
           set -euo pipefail
           cd /workspace
           git clone https://github.com/islo-labs/islo-reviewer.git
@@ -87,4 +87,4 @@ runs:
       shell: bash
       env:
         SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
-      run: islo rm "${SANDBOX}" --force || true
+      run: islo rm --no-config "${SANDBOX}" --force || true
