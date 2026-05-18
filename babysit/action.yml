@@ -21,6 +21,18 @@ inputs:
     description: 'Memory in MB for the sandbox'
     required: false
     default: '4096'
+  model:
+    description: 'Claude model to use (e.g., claude-opus-4-6, claude-sonnet-4)'
+    required: false
+    default: 'claude-opus-4-6'
+  max_turns:
+    description: 'Maximum agentic turns (tool-use round trips)'
+    required: false
+    default: '50'
+  max_budget_usd:
+    description: 'Stop when cost estimate reaches this USD value (empty = unlimited)'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -64,7 +76,10 @@ runs:
           cd islo-reviewer && npm ci
           npx tsx src/babysit.ts \
             "'"${{ github.repository }}"'" \
-            "'"${{ inputs.run_id }}"'"
+            "'"${{ inputs.run_id }}"'" \
+            "'"${{ inputs.model }}"'" \
+            "'"${{ inputs.max_turns }}"'" \
+            "'"${{ inputs.max_budget_usd }}"'"
         '
 
     - name: Cleanup

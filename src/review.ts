@@ -7,9 +7,9 @@ import { getPRInfo } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [repo, prNumber] = process.argv.slice(2);
+const [repo, prNumber, model, maxTurnsStr, maxBudgetStr] = process.argv.slice(2);
 if (!repo || !prNumber) {
-  console.error("Usage: tsx src/review.ts <owner/repo> <pr-number>");
+  console.error("Usage: tsx src/review.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd]");
   process.exit(1);
 }
 
@@ -48,8 +48,9 @@ for await (const message of query({
     cwd,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
-    maxTurns: 50,
-    model: "claude-opus-4-6",
+    maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
+    model: model || "claude-opus-4-6",
+    ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
   },
 })) {
   if (message.type === "assistant") {

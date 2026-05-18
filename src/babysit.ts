@@ -7,9 +7,9 @@ import { getPRFromRun, getRecentBotCommits } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [repo, runId] = process.argv.slice(2);
+const [repo, runId, model, maxTurnsStr, maxBudgetStr] = process.argv.slice(2);
 if (!repo || !runId) {
-  console.error("Usage: tsx src/babysit.ts <owner/repo> <run-id>");
+  console.error("Usage: tsx src/babysit.ts <owner/repo> <run-id> [model] [max-turns] [max-budget-usd]");
   process.exit(1);
 }
 
@@ -56,8 +56,9 @@ for await (const message of query({
     cwd,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
-    maxTurns: 50,
-    model: "claude-opus-4-6",
+    maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
+    model: model || "claude-opus-4-6",
+    ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
   },
 })) {
   if (message.type === "assistant") {
