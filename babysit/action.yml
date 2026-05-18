@@ -87,4 +87,4 @@ runs:
       shell: bash
       env:
         SANDBOX: babysit-${{ github.event.repository.name }}-${{ inputs.run_id }}
-      run: islo rm --no-config "${SANDBOX}" --force || true
+      run: islo rm "${SANDBOX}" --force || true

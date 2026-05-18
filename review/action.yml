@@ -87,4 +87,4 @@ runs:
       shell: bash
       env:
         SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
-      run: islo rm --no-config "${SANDBOX}" --force || true
+      run: islo rm "${SANDBOX}" --force || true
