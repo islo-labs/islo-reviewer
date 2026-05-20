@@ -79,7 +79,7 @@ Both actions share the same configuration inputs (except `pr_number` vs `run_id`
 
 ## Customizing Review Context
 
-Create a `.github/islo-reviewer.md` file in your repo to provide extra context to the reviewer. This file is automatically read and injected into the review/babysit prompt.
+Create a `REVIEW.md` file at the root of your repo to provide extra context to the reviewer. This file is automatically read and injected into the review/babysit prompt. (`.github/islo-reviewer.md` is also supported for backward compatibility.)
 
 Example:
 

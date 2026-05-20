@@ -38,8 +38,12 @@ const promptTemplate = readFileSync(
 );
 
 let contextSection = "";
-const contextPath = join(cwd, ".github", "islo-reviewer.md");
-if (existsSync(contextPath)) {
+const contextCandidates = [
+  join(cwd, "REVIEW.md"),
+  join(cwd, ".github", "islo-reviewer.md"),
+];
+const contextPath = contextCandidates.find(existsSync);
+if (contextPath) {
   contextSection =
     "\n\n## Repository Context\n\n" + readFileSync(contextPath, "utf-8");
 }
