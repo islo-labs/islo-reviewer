@@ -75,7 +75,7 @@ Both actions share the same configuration inputs (except `pr_number` vs `run_id`
 | `memory` | no | `4096` | Memory in MB for the sandbox |
 | `model` | no | `claude-opus-4-6` | Claude model to use (e.g., `claude-sonnet-4` for lower cost) |
 | `max_turns` | no | `50` | Maximum agentic turns (tool-use round trips) |
-| `max_budget_usd` | no | `''` | Cost cap in USD. Empty = unlimited. |
+| `max_budget_usd` | no | `10` | Cost cap in USD. |
 
 ## Customizing Review Context
 
