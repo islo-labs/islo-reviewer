@@ -1,0 +1,123 @@
+name: 'Islo Verify'
+description: 'Empirical E2E verification powered by Islo sandboxes and Claude. Boots a full stack, verifies a PR works end-to-end, and posts evidence.'
+
+inputs:
+  pr_number:
+    description: 'PR number to verify'
+    required: true
+  related_prs:
+    description: 'Comma-separated repo:ref pairs for multi-repo verification (e.g. backend:pr/423,gateway:feat/billing)'
+    required: false
+    default: ''
+  boot_command:
+    description: >
+      Shell command to boot the stack inside the sandbox. Supports variable substitution:
+      ${REPO} (repo name), ${PR_NUMBER}, ${RELATED_ARGS} (built from related_prs as --repo ref flags).
+      Set to empty string to skip the boot step (if your snapshot is already running).
+    required: false
+    default: 'launch-fullstack ${LAUNCH_ARGS}'
+  env_file:
+    description: 'Path to an env file inside the sandbox to source before running the agent (e.g. /workspace/.fullstack-env)'
+    required: false
+    default: '/workspace/.fullstack-env'
+  snapshot:
+    description: 'Sandbox snapshot name'
+    required: false
+    default: 'islo-fullstack'
+  cpu:
+    description: 'CPU cores for the sandbox'
+    required: false
+    default: '8'
+  memory:
+    description: 'Memory in MB for the sandbox'
+    required: false
+    default: '16384'
+  model:
+    description: 'Claude model to use (e.g., claude-opus-4-6, claude-sonnet-4)'
+    required: false
+    default: 'claude-opus-4-6'
+  max_turns:
+    description: 'Maximum agentic turns (tool-use round trips)'
+    required: false
+    default: '80'
+  max_budget_usd:
+    description: 'Stop when cost estimate reaches this USD value'
+    required: false
+    default: '20'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install islo CLI
+      shell: bash
+      run: curl -fsSL https://islo.dev/install.sh | sh
+
+    - name: Create sandbox
+      shell: bash
+      env:
+        SANDBOX: verify-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+      run: |
+        islo use "${SANDBOX}" \
+          --no-config \
+          --snapshot ${{ inputs.snapshot }} \
+          --cpu ${{ inputs.cpu }} --memory ${{ inputs.memory }} \
+          -- echo "Sandbox ready"
+
+    - name: Boot stack
+      if: inputs.boot_command != ''
+      shell: bash
+      env:
+        SANDBOX: verify-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+        REPO: ${{ github.event.repository.name }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        RELATED_PRS: ${{ inputs.related_prs }}
+        BOOT_COMMAND: ${{ inputs.boot_command }}
+      run: |
+        # Build LAUNCH_ARGS from primary repo + related PRs
+        LAUNCH_ARGS="--${REPO} pr/${PR_NUMBER}"
+        if [ -n "${RELATED_PRS}" ]; then
+          IFS=',' read -ra PAIRS <<< "${RELATED_PRS}"
+          for pair in "${PAIRS[@]}"; do
+            repo_name="${pair%%:*}"
+            ref="${pair#*:}"
+            LAUNCH_ARGS="${LAUNCH_ARGS} --${repo_name} ${ref}"
+          done
+        fi
+        export LAUNCH_ARGS
+
+        # Substitute variables in boot_command
+        RESOLVED_CMD=$(envsubst '${REPO} ${PR_NUMBER} ${LAUNCH_ARGS} ${RELATED_PRS}' <<< "${BOOT_COMMAND}")
+
+        echo "Running boot command: ${RESOLVED_CMD}"
+        islo use --no-config "${SANDBOX}" -- bash -c "
+          source ~/.bashrc 2>/dev/null || true
+          ${RESOLVED_CMD}
+        "
+
+    - name: Verify
+      shell: bash
+      env:
+        SANDBOX: verify-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+        ENV_FILE: ${{ inputs.env_file }}
+      run: |
+        islo use --no-config "${SANDBOX}" -- bash -c '
+          set -euo pipefail
+          cd /workspace
+          git clone https://github.com/islo-labs/islo-reviewer.git 2>/dev/null || (cd islo-reviewer && git pull)
+          cd islo-reviewer && npm ci
+          [ -f "'"${ENV_FILE}"'" ] && source "'"${ENV_FILE}"'" || true
+          npx tsx src/verify.ts \
+            "'"${{ github.repository }}"'" \
+            "'"${{ inputs.pr_number }}"'" \
+            "'"${{ inputs.model }}"'" \
+            "'"${{ inputs.max_turns }}"'" \
+            "'"${{ inputs.max_budget_usd }}"'" \
+            "'"${{ inputs.related_prs }}"'"
+        '
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      env:
+        SANDBOX: verify-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+      run: islo rm "${SANDBOX}" --force || true

@@ -51,6 +51,41 @@ jobs:
 
 That's it. Both actions handle sandbox creation, script execution, and cleanup.
 
+**`.github/workflows/islo-verify.yml`** — verifies PRs work E2E against the full stack:
+
+```yaml
+name: Islo Verify
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to verify"
+        required: true
+      related_prs:
+        description: "Comma-separated repo:ref pairs (e.g. bear-agent:pr/423)"
+        default: ""
+permissions:
+  pull-requests: write
+jobs:
+  verify:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'islo-verify') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: islo-labs/islo-reviewer/verify@v1
+        with:
+          pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          related_prs: ${{ inputs.related_prs || '' }}
+        env:
+          ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+```
+
+Trigger by adding the `islo-verify` label to a PR, or manually via workflow dispatch.
+
 ## Actions
 
 ### `islo-labs/islo-reviewer/review@v1`
@@ -61,21 +96,28 @@ Automated PR code review. Reads the diff, explores the codebase, optionally runs
 
 Automated CI failure fixer. Reads CI logs, fixes mechanical issues (lint, formatting, type errors, test updates), and pushes a fix commit. Does **not** change logic.
 
+### `islo-labs/islo-reviewer/verify@v1`
+
+Empirical E2E verification. Boots a full application stack inside a sandbox, builds the PR branch, and has an agent verify the change works end-to-end. Posts a structured verification report as a PR comment with evidence. Works with any stack — configure `boot_command` and `snapshot` for your project.
+
 ## Inputs
 
-Both actions share the same configuration inputs (except `pr_number` vs `run_id`):
+All actions share common inputs. Verify has additional inputs for stack boot configuration:
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `pr_number` | **yes** (review) | — | PR number to review |
+| `pr_number` | **yes** (review, verify) | — | PR number to review/verify |
 | `run_id` | **yes** (babysit) | — | Failed workflow run ID |
-| `islo_config` | no | `''` | Path to an `islo.yaml` for sandbox config (e.g., `.github/islo-review.yaml`). Triggers a repo checkout so the file is available. |
-| `snapshot` | no | `''` | Sandbox snapshot name. Use to restore a pre-built environment. |
-| `cpu` | no | `4` | CPU cores for the sandbox |
-| `memory` | no | `4096` | Memory in MB for the sandbox |
-| `model` | no | `claude-opus-4-6` | Claude model to use (e.g., `claude-sonnet-4` for lower cost) |
-| `max_turns` | no | `50` | Maximum agentic turns (tool-use round trips) |
-| `max_budget_usd` | no | `10` | Cost cap in USD. |
+| `related_prs` | no (verify only) | `''` | Comma-separated `repo:ref` pairs for multi-repo verification |
+| `boot_command` | no (verify only) | `launch-fullstack ${LAUNCH_ARGS}` | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}` substitution. Set to `''` to skip. |
+| `env_file` | no (verify only) | `/workspace/.fullstack-env` | Path to env file to source before running the agent |
+| `islo_config` | no | `''` | Path to an `islo.yaml` for sandbox config. Triggers a repo checkout. |
+| `snapshot` | no | `''` (`islo-fullstack` for verify) | Sandbox snapshot name |
+| `cpu` | no | `4` (`8` for verify) | CPU cores for the sandbox |
+| `memory` | no | `4096` (`16384` for verify) | Memory in MB for the sandbox |
+| `model` | no | `claude-opus-4-6` | Claude model to use |
+| `max_turns` | no | `50` (`80` for verify) | Maximum agentic turns |
+| `max_budget_usd` | no | `10` (`20` for verify) | Cost cap in USD |
 
 ## Customizing Review Context
 
@@ -150,15 +192,54 @@ Then use `${{ github.event.pull_request.number || inputs.pr_number }}` as the `p
 
 ## How It Works
 
-1. GitHub Action triggers on PR open (review) or CI failure (babysit)
+1. GitHub Action triggers on PR open (review), CI failure (babysit), or label/dispatch (verify)
 2. Action installs the Islo CLI and creates an ephemeral sandbox
-3. Inside the sandbox, it clones this repo and runs the appropriate script
-4. The script uses the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) to analyze code and take action
-5. Sandbox is destroyed after the script completes
+3. For verify: runs the configured `boot_command` to start the stack with the PR branch
+4. Inside the sandbox, it clones this repo and runs the appropriate script
+5. The script uses the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) to analyze code and take action
+6. Sandbox is destroyed after the script completes
+
+### Multi-Repo Verification
+
+For changes that span multiple repos (e.g. an API endpoint + its consumer), use `related_prs` to build all related branches together:
+
+```bash
+# Via GitHub CLI (manual dispatch):
+gh workflow run islo-verify.yml \
+  -f pr_number=456 \
+  -f related_prs='backend:pr/423,gateway:feat/new-policy'
+```
+
+The format is `repo-name:ref` where ref can be `pr/N`, a branch name, or a commit SHA.
+
+### Custom Stack Configuration
+
+The verify action works with any stack. Override `boot_command` and `snapshot` for your project:
+
+```yaml
+- uses: islo-labs/islo-reviewer/verify@v1
+  with:
+    pr_number: ${{ github.event.pull_request.number }}
+    snapshot: my-fullstack-snapshot
+    boot_command: '/workspace/scripts/boot.sh --service ${REPO} --ref pr/${PR_NUMBER}'
+    env_file: '/workspace/.env'
+  env:
+    ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+```
+
+The `boot_command` receives these variables:
+- `${REPO}` — repository name (e.g. `my-backend`)
+- `${PR_NUMBER}` — the PR number being verified
+- `${LAUNCH_ARGS}` — pre-built `--repo ref` flags from the primary PR and `related_prs`
+- `${RELATED_PRS}` — raw comma-separated string as passed by the user
+
+Set `boot_command: ''` to skip the boot step entirely (useful if your snapshot is already running).
 
 ## Safety
 
+- Review triggers once per PR open, not on every push
+- Verify triggers only on label or manual dispatch (expensive operation)
 - Babysit only fixes mechanical issues — lint, formatting, type errors, test updates
 - Bot commit counter prevents infinite fix-fail-fix loops (max 3 attempts)
-- Review triggers once per PR open, not on every push
+- Verify never modifies the PR branch — read-only verification with evidence
 - `max_budget_usd` provides a hard cost cap per invocation
