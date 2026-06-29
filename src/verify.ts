@@ -17,6 +17,7 @@ if (!repo || !prNumber) {
 }
 
 const repoShort = repo.split("/")[1];
+const repoOrg = repo.split("/")[0];
 const cwd = `/workspace/${repoShort}`;
 
 console.log(`Verifying PR #${prNumber} in ${repo}`);
@@ -43,6 +44,7 @@ if (existsSync(contextPath)) {
 const prompt = promptTemplate
   .replaceAll("{{REPO}}", repo)
   .replaceAll("{{REPO_SHORT}}", repoShort)
+  .replaceAll("{{REPO_ORG}}", repoOrg)
   .replaceAll("{{PR_NUMBER}}", prNumber)
   .replaceAll("{{HEAD_REF}}", headRef)
   .replaceAll("{{BASE_REF}}", baseRef)

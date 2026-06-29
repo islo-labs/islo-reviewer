@@ -17,7 +17,7 @@ The stack has been booted with the PR branch already checked out and running. Yo
    gh pr view {{PR_NUMBER}} --repo {{REPO}}
    gh pr diff {{PR_NUMBER}} --repo {{REPO}}
    ```
-   If there are related PRs listed above, read those too — they are part of the same feature spanning multiple repos. For each related PR (e.g. `backend:pr/423`), run `gh pr view 423 --repo islo-labs/backend` and `gh pr diff 423 --repo islo-labs/backend` to understand how the pieces fit together. Design your verification scenarios around how the PRs interact — the feature only makes sense when you understand all the changes as a whole.
+   If there are related PRs listed above, read those too — they are part of the same feature spanning multiple repos. For each related PR (e.g. `backend:pr/423`), run `gh pr view 423 --repo {{REPO_ORG}}/backend` and `gh pr diff 423 --repo {{REPO_ORG}}/backend` to understand how the pieces fit together. Design your verification scenarios around how the PRs interact — the feature only makes sense when you understand all the changes as a whole.
 
 2. **Discover the environment.** Figure out what services are running and how to interact with them:
    - **First**, source the environment file to get credentials and config: `source {{ENV_FILE}} 2>/dev/null || true`
