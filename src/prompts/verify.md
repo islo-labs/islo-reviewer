@@ -23,7 +23,7 @@ The stack has been booted with the PR branch already checked out and running. Yo
    - Look for running processes (`ps aux | grep -E 'python|node|cargo|bear'`)
    - Check common ports (`curl -sf http://localhost:8000/docs`, `curl -sf http://localhost:3000`)
    - Read any stack documentation in `/workspace/`
-   - Check what environment variables are set (`env | grep -i url\|key\|port\|host`) — credentials and service URLs are typically pre-configured.
+   - Authentication and credentials are already configured in your environment. Just use the tools directly.
 
 3. **Devise verification scenarios.** Think like a QA engineer. Based on what the PR changes, determine 2-5 concrete scenarios that would prove the change works correctly. Consider:
    - Happy path: does the feature work as intended?
