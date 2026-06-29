@@ -48,7 +48,11 @@ const prompt = promptTemplate
   .replaceAll("{{BASE_REF}}", baseRef)
   .replaceAll("{{PR_TITLE}}", title)
   .replaceAll("{{RELATED_PRS}}", relatedPrsStr || "none")
-  .replaceAll("{{CONTEXT_SECTION}}", contextSection);
+  .replaceAll("{{CONTEXT_SECTION}}", contextSection)
+  .replaceAll(
+    "{{ENV_FILE}}",
+    process.env.ENV_FILE || "/workspace/.fullstack-env"
+  );
 
 console.log("Starting verification agent...");
 

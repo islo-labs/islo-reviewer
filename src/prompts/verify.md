@@ -20,11 +20,11 @@ The stack has been booted with the PR branch already checked out and running. Yo
    If there are related PRs listed above, read those too — they are part of the same feature spanning multiple repos. For each related PR (e.g. `backend:pr/423`), run `gh pr view 423 --repo islo-labs/backend` and `gh pr diff 423 --repo islo-labs/backend` to understand how the pieces fit together. Design your verification scenarios around how the PRs interact — the feature only makes sense when you understand all the changes as a whole.
 
 2. **Discover the environment.** Figure out what services are running and how to interact with them:
-   - **First**, source the environment file to get credentials and config: `source /workspace/.fullstack-env 2>/dev/null || true`
+   - **First**, source the environment file to get credentials and config: `source {{ENV_FILE}} 2>/dev/null || true`
    - Look for running processes (`ps aux | grep -E 'python|node|cargo|bear'`)
    - Check common ports (`curl -sf http://localhost:8000/docs`, `curl -sf http://localhost:3000`)
    - Read any stack documentation in `/workspace/`
-   - The `islo` CLI is pre-installed and authenticated via `ISLO_API_KEY` (set by the env file). Use it directly — no login needed.
+   - Any pre-installed CLI tools should work after sourcing the env file — no manual login needed.
 
 3. **Devise verification scenarios.** Think like a QA engineer. Based on what the PR changes, determine 2-5 concrete scenarios that would prove the change works correctly. Consider:
    - Happy path: does the feature work as intended?
@@ -52,4 +52,4 @@ The stack has been booted with the PR branch already checked out and running. Yo
 - **Report failures honestly.** If something doesn't work, say so clearly with the error output.
 - **Check logs on failure.** If a request fails, check the relevant service log for the error.
 - **Time-box expensive operations.** If a scenario involves creating VMs or containers, account for startup time (~30-60s).
-- **Source the env file in every shell session.** Commands run in isolated shells; always `source /workspace/.fullstack-env` at the top of multi-command scripts to ensure credentials are available.
+- **Source the env file in every shell session.** Commands run in isolated shells; always `source {{ENV_FILE}}` at the top of multi-command scripts to ensure credentials are available.
