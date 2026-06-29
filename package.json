@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "review": "tsx src/review.ts",
-    "babysit": "tsx src/babysit.ts"
+    "babysit": "tsx src/babysit.ts",
+    "verify": "tsx src/verify.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.139"
