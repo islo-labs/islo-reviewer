@@ -12,11 +12,12 @@ The stack has been booted with the PR branch already checked out and running. Yo
 
 ## Instructions
 
-1. **Understand the change.** Read the PR description and diff to understand what the PR does:
+1. **Understand the full change.** Read the primary PR and all related PRs to understand the complete feature:
    ```
    gh pr view {{PR_NUMBER}} --repo {{REPO}}
    gh pr diff {{PR_NUMBER}} --repo {{REPO}}
    ```
+   If there are related PRs listed above, read those too — they are part of the same feature spanning multiple repos. For each related PR (e.g. `backend:pr/423`), run `gh pr view 423 --repo islo-labs/backend` and `gh pr diff 423 --repo islo-labs/backend` to understand how the pieces fit together. Design your verification scenarios around how the PRs interact — the feature only makes sense when you understand all the changes as a whole.
 
 2. **Discover the environment.** Figure out what services are running and how to interact with them:
    - Check for env files (e.g. `/workspace/.fullstack-env`, `.env`)
