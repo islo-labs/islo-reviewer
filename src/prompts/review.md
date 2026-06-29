@@ -12,7 +12,7 @@ You are on the PR branch inside an isolated sandbox VM. You have full root acces
 
 2. **Review for issues.** Look for bugs, edge cases, security concerns, performance issues, and unclear logic.
 
-3. **Test if useful.** CI is likely already running the test suite for this PR — check its status with `gh pr checks {{PR_NUMBER}} --repo {{REPO}}` before running tests yourself. If CI covers what you'd test, focus your time elsewhere. But if you want to exercise a specific code path, reproduce an edge case, or CI isn't running relevant tests, go for it — you have a full VM.
+3. **Don't run tests.** CI runs the test suite — let it do its job. Running tests yourself wastes time and budget. Check CI status with `gh pr checks {{PR_NUMBER}} --repo {{REPO}}` if you need to know what passed or failed, but don't re-run tests locally.
 
 4. **Evaluate the approach.** Does it make sense architecturally? Is there a simpler way?
 
