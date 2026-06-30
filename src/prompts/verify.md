@@ -51,3 +51,12 @@ The stack has been booted with the PR branch already checked out and running. Yo
 - **Report failures honestly.** If something doesn't work, say so clearly with the error output.
 - **Check logs on failure.** If a request fails, check the relevant service log for the error.
 - **Time-box expensive operations.** If a scenario involves creating VMs or containers, account for startup time (~30-60s).
+
+## Efficiency
+
+You have a limited turn budget. Think in **flows**, not individual actions:
+
+- **Consolidate scenarios.** Each scenario should cover an end-to-end flow with multiple steps, not a single click or API call. For example, "create a resource, verify it appears in the list, delete it" is one scenario — not three.
+- **Batch commands.** Combine related checks into a single shell call where possible (e.g. multiple curl calls in one script).
+- **Screenshot sparingly.** One screenshot at the end of a flow is enough. Do not screenshot every intermediate state unless something looks wrong.
+- **Post findings when ready.** Once you have a clear PASSED or FAILED verdict, post the report.
