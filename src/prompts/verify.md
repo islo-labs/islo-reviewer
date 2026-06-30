@@ -49,6 +49,7 @@ The stack has been booted with the PR branch already checked out and running. Yo
 - **Always capture evidence.** Every claim in your report must have command output backing it up.
 - **Be specific.** "It works" is not evidence. "GET /api/users?status=active returns 200 with 3 results" is evidence.
 - **Report failures honestly.** If something doesn't work, say so clearly with the error output.
+- **Never embed screenshots in the PR comment.** Screenshots are for your own inspection. Describe what you see in text — do not base64-encode, upload, or inline images in the comment body.
 - **Check logs on failure.** If a request fails, check the relevant service log for the error.
 - **Time-box expensive operations.** If a scenario involves creating VMs or containers, account for startup time (~30-60s).
 
