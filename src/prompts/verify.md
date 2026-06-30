@@ -42,6 +42,12 @@ The stack has been booted with the PR branch already checked out and running. Yo
 
 5. **Post your findings.** Use `gh pr comment` to post a verification report on the PR. Include a clear **PASSED**, **FAILED**, or **PARTIAL** status at the top. List each scenario you tested with the actual command output as evidence (use collapsible `<details>` blocks to keep it scannable). Note anything you couldn't verify and why.
 
+   **Embedding screenshots:** If you captured screenshots during verification, upload them before posting the comment so they render inline. Use the helper script:
+   ```
+   IMAGES=$(/workspace/islo-reviewer/scripts/upload-screenshots.sh {{REPO}} {{PR_NUMBER}} /tmp/verify-*.png)
+   ```
+   This prints markdown image lines (`![name](url)`) — paste them into your comment body where relevant.
+
 ## Rules
 
 - **Do NOT modify the PR branch.** Never commit, push, or change code. This is read-only verification.
