@@ -54,10 +54,9 @@ The stack has been booted with the PR branch already checked out and running. Yo
 
 ## Efficiency
 
-You have a limited turn budget. Be intentional with every tool call:
+You have a limited turn budget. Think in **flows**, not individual actions:
 
-- **Scope tightly.** Only verify what the PR actually changes. Do not regression-test unrelated features.
+- **Consolidate scenarios.** Each scenario should cover an end-to-end flow with multiple steps, not a single click or API call. For example, "create a resource, verify it appears in the list, delete it" is one scenario — not three.
 - **Batch commands.** Combine related checks into a single shell call where possible (e.g. multiple curl calls in one script).
-- **Stop when you have enough evidence.** 2–3 well-chosen scenarios that prove the happy path and one edge case are sufficient. Do not exhaustively test every permutation.
-- **For UI changes:** navigate to the page, take a screenshot, do 1–2 key interactions, screenshot the result. That is enough.
-- **Post findings early.** If you have a clear PASSED or FAILED verdict after a few scenarios, post the report. Do not keep testing to fill the turn budget.
+- **Screenshot sparingly.** One screenshot at the end of a flow is enough. Do not screenshot every intermediate state unless something looks wrong.
+- **Post findings when ready.** Once you have a clear PASSED or FAILED verdict, post the report.
