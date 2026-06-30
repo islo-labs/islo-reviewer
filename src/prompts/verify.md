@@ -51,3 +51,13 @@ The stack has been booted with the PR branch already checked out and running. Yo
 - **Report failures honestly.** If something doesn't work, say so clearly with the error output.
 - **Check logs on failure.** If a request fails, check the relevant service log for the error.
 - **Time-box expensive operations.** If a scenario involves creating VMs or containers, account for startup time (~30-60s).
+
+## Efficiency
+
+You have a limited turn budget. Be intentional with every tool call:
+
+- **Scope tightly.** Only verify what the PR actually changes. Do not regression-test unrelated features.
+- **Batch commands.** Combine related checks into a single shell call where possible (e.g. multiple curl calls in one script).
+- **Stop when you have enough evidence.** 2–3 well-chosen scenarios that prove the happy path and one edge case are sufficient. Do not exhaustively test every permutation.
+- **For UI changes:** navigate to the page, take a screenshot, do 1–2 key interactions, screenshot the result. That is enough.
+- **Post findings early.** If you have a clear PASSED or FAILED verdict after a few scenarios, post the report. Do not keep testing to fill the turn budget.
