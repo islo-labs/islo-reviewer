@@ -35,9 +35,9 @@ const promptTemplate = readFileSync(
 );
 
 let contextSection = "";
-const contextPath = join(cwd, "REVIEW.md");
-if (existsSync(contextPath)) {
-  contextSection = readFileSync(contextPath, "utf-8");
+for (const name of ["REVIEW.md", "VERIFY.md"]) {
+  const p = join(cwd, name);
+  if (existsSync(p)) contextSection += readFileSync(p, "utf-8") + "\n";
 }
 
 const prompt = promptTemplate
