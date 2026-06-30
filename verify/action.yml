@@ -105,6 +105,10 @@ runs:
           cd /workspace
           git clone https://github.com/islo-labs/islo-reviewer.git 2>/dev/null || (cd islo-reviewer && git pull)
           cd islo-reviewer && npm ci
+
+          # Install gh-image for screenshot uploads to PR comments
+          gh extension install drogers0/gh-image 2>/dev/null || true
+
           [ -f "'"${ENV_FILE}"'" ] && source "'"${ENV_FILE}"'" || true
           npx tsx src/verify.ts \
             "'"${{ github.repository }}"'" \
