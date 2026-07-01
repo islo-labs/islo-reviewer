@@ -1,0 +1,77 @@
+name: Islo Preview and Verify
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to preview and verify"
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-and-verify:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'preview') ||
+      (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'preview'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: islo-preview-${{ github.event.pull_request.number || inputs.pr_number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: preview
+        uses: islo-labs/islo-reviewer/preview@v1
+        with:
+          pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          islo_config: islo.yaml
+          snapshot: my-preview-snapshot
+          share_port: "3000"
+          pause_after_idle_seconds: "1800"
+          boot_command: |
+            cd "/workspace/${REPO}"
+            gh pr checkout "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}"
+            npm ci
+            nohup npm run start -- --host 0.0.0.0 --port "${SHARE_PORT}" > /tmp/islo-preview.log 2>&1 &
+            for _ in $(seq 1 60); do
+              curl -fsS "http://localhost:${SHARE_PORT}" >/dev/null && exit 0
+              sleep 2
+            done
+            echo "Preview did not become ready"
+            tail -50 /tmp/islo-preview.log
+            exit 1
+        env:
+          ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+
+      - uses: islo-labs/islo-reviewer/verify@v1
+        with:
+          pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}
+          boot_command: ""
+          preview_url: ${{ steps.preview.outputs.share-url }}
+          max_budget_usd: "10"
+        env:
+          ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+
+  cleanup:
+    if: >-
+      github.event.action == 'closed' ||
+      (github.event.action == 'unlabeled' && github.event.label.name == 'preview')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: islo-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: islo-labs/islo-reviewer/preview@v1
+        with:
+          pr_number: ${{ github.event.pull_request.number }}
+          cleanup: "true"
+        env:
+          ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
