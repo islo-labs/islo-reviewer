@@ -6,14 +6,7 @@ import { getPRInfo } from "./utils/github.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [
-  repo,
-  prNumber,
-  model,
-  maxTurnsStr,
-  maxBudgetStr,
-  relatedPrsStr,
-] =
+const [repo, prNumber, model, maxTurnsStr, maxBudgetStr, relatedPrsStr] =
   process.argv.slice(2);
 
 if (!repo || !prNumber) {
