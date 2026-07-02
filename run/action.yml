@@ -1,0 +1,71 @@
+name: 'Islo Run'
+description: 'Create, boot, and clean up an Islo sandbox.'
+
+inputs:
+  pr_number:
+    description: 'PR number to run against'
+    required: true
+  sandbox:
+    description: 'Sandbox name to create, reuse, or clean up'
+    required: true
+  islo_config:
+    description: 'Path to islo.yaml for sandbox config. The caller must check out the repo before this action.'
+    required: false
+    default: ''
+  boot_command:
+    description: 'Command to boot the stack inside the sandbox'
+    required: false
+    default: 'launch-fullstack ${LAUNCH_ARGS}'
+  related_prs:
+    description: 'Comma-separated repo:ref pairs for multi-repo boot'
+    required: false
+    default: ''
+  snapshot:
+    description: 'Sandbox snapshot name'
+    required: false
+    default: 'islo-fullstack'
+  cpu:
+    description: 'CPU cores for the sandbox'
+    required: false
+    default: '8'
+  memory:
+    description: 'Memory in MB for the sandbox'
+    required: false
+    default: '16384'
+  pause_after_idle_seconds:
+    description: 'Seconds of inactivity before pausing the sandbox. Leave empty to disable.'
+    required: false
+    default: ''
+  share_port:
+    description: 'Optional port value available to boot_command as ${SHARE_PORT}'
+    required: false
+    default: ''
+  cleanup:
+    description: 'When true, remove the sandbox instead of creating or booting it'
+    required: false
+    default: 'false'
+
+outputs:
+  sandbox-name:
+    description: 'Created or reused sandbox name'
+    value: ${{ inputs.sandbox }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run sandbox lifecycle
+      shell: bash
+      env:
+        SANDBOX: ${{ inputs.sandbox }}
+        ISLO_CONFIG: ${{ inputs.islo_config }}
+        BOOT_COMMAND: ${{ inputs.boot_command }}
+        RELATED_PRS: ${{ inputs.related_prs }}
+        SNAPSHOT: ${{ inputs.snapshot }}
+        CPU: ${{ inputs.cpu }}
+        MEMORY: ${{ inputs.memory }}
+        PAUSE_AFTER_IDLE_SECONDS: ${{ inputs.pause_after_idle_seconds }}
+        SHARE_PORT: ${{ inputs.share_port }}
+        CLEANUP: ${{ inputs.cleanup }}
+        REPO: ${{ github.event.repository.name }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+      run: bash "${{ github.action_path }}/run.sh"

@@ -154,15 +154,15 @@ The actions share the common sandbox and agent inputs where they apply:
 | `run_id` | **yes** (babysit) | — | Failed workflow run ID |
 | `related_prs` | no (preview, verify) | `''` | Comma-separated `repo:ref` pairs for multi-repo boot and verification |
 | `preview_url` | no (verify only) | `''` | Share URL for an already-running preview. Advanced use only; `preview@v1` verifies its own sandbox when `verify: "true"`. |
-| `boot_command` | no (verify only) | `launch-fullstack ${LAUNCH_ARGS}` | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}` substitution. Set to `''` to skip. |
-| `env_file` | no (verify only) | `/workspace/.fullstack-env` | Path to env file to source before running the agent |
+| `boot_command` | no (preview, verify) | `launch-fullstack ${LAUNCH_ARGS}` (`--preview true` for preview) | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}`, and for preview `${SHARE_PORT}`. Set to `''` to skip. |
+| `env_file` | no (preview, verify) | `/workspace/.fullstack-env` | Path to env file inside the sandbox to source before the verification agent runs |
 | `islo_config` | no | `''` | Path to an `islo.yaml` for sandbox config. Triggers a repo checkout. |
 | `snapshot` | no | `''` (`islo-fullstack` for preview and verify) | Sandbox snapshot name |
 | `cpu` | no | `4` (`8` for preview and verify) | CPU cores for the sandbox |
 | `memory` | no | `4096` (`16384` for preview and verify) | Memory in MB for the sandbox |
 | `model` | no | `claude-opus-4-6` | Claude model to use |
-| `max_turns` | no | `50` (`80` for verify) | Maximum agentic turns |
-| `max_budget_usd` | no | `10` (`20` for verify) | Cost cap in USD |
+| `max_turns` | no | `50` (`80` for preview verification and verify) | Maximum agentic turns |
+| `max_budget_usd` | no | `10` (`20` for preview verification and verify) | Cost cap in USD |
 
 Preview has additional inputs:
 
@@ -321,7 +321,7 @@ Set `verify: "true"` when you want an agent to exercise that same preview sandbo
 
 Use standalone `verify@v1` for non-preview full-stack verification, or for advanced cases where you deliberately want a separate verification sandbox.
 
-See `examples/preview-only.yml` and `examples/VERIFY_AND_PREVIEW.md` for fuller templates.
+If the default `launch-fullstack ${LAUNCH_ARGS} --preview true` command is not enough, override `boot_command`. Keep the command project-specific, but keep sharing and cleanup in `preview@v1`.
 
 ## Safety
 
