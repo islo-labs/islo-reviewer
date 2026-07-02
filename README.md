@@ -151,7 +151,7 @@ Automated CI failure fixer. Reads CI logs, fixes mechanical issues (lint, format
 
 ### `islo-labs/islo-reviewer/preview@v1`
 
-Shareable PR previews. Creates or reuses an Islo sandbox, runs your boot command, shares a port, upserts a PR comment with the preview URL, pauses the sandbox after idle time, and cleans up the exact sandbox/share/comment on PR close or label removal. Use it by itself, or pass its `share-url` output to `verify@v1`.
+Shareable PR previews. Creates or reuses an Islo sandbox, runs your boot command, shares a port, upserts a PR comment with the preview URL, pauses the sandbox after idle time, and cleans up the exact sandbox/share/comment on PR close or label removal. Set `verify: "true"` to have the agent verify the same sandbox humans will open.
 
 ### `islo-labs/islo-reviewer/verify@v1`
 
@@ -165,8 +165,8 @@ The actions share the common sandbox and agent inputs where they apply:
 |-------|----------|---------|-------------|
 | `pr_number` | **yes** (review, preview, verify) | — | PR number to review/preview/verify |
 | `run_id` | **yes** (babysit) | — | Failed workflow run ID |
-| `related_prs` | no (verify only) | `''` | Comma-separated `repo:ref` pairs for multi-repo verification |
-| `preview_url` | no (verify only) | `''` | Share URL for an already-running preview. The verify agent uses this as the app entrypoint. |
+| `related_prs` | no (preview, verify) | `''` | Comma-separated `repo:ref` pairs for multi-repo boot and verification |
+| `preview_url` | no (verify only) | `''` | Share URL for an already-running preview. Advanced use only; `preview@v1` verifies its own sandbox when `verify: "true"`. |
 | `boot_command` | no (verify only) | `launch-fullstack ${LAUNCH_ARGS}` | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}` substitution. Set to `''` to skip. |
 | `env_file` | no (verify only) | `/workspace/.fullstack-env` | Path to env file to source before running the agent |
 | `islo_config` | no | `''` | Path to an `islo.yaml` for sandbox config. Triggers a repo checkout. |
@@ -182,13 +182,14 @@ Preview has additional inputs:
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `sandbox` | no | `preview-<repo>-<pr_number>` | Sandbox name to create or reuse |
-| `boot_command` | no | `''` | Command to start the app inside the sandbox |
-| `env_file` | no | `''` | Env file passed to `islo use` when running `boot_command` |
+| `boot_command` | no | `launch-fullstack ${LAUNCH_ARGS}` | Command to start the app inside the sandbox |
+| `env_file` | no | `/workspace/.fullstack-env` | Env file inside the sandbox to source before booting or verifying |
 | `share_port` | no | `3000` | Sandbox port to share |
 | `share_ttl` | no | `168h` | Share URL TTL |
 | `pause_after_idle_seconds` | no | `1800` | Idle time before pausing the sandbox. Leave empty to disable. |
 | `comment_marker` | no | `<!-- islo-preview -->` | Marker used to upsert or delete the PR comment |
 | `cleanup` | no | `false` | Set to `true` in close/unlabel jobs to delete the preview |
+| `verify` | no | `false` | Run the verification agent inside the same preview sandbox after sharing the port |
 
 ## Customizing Review Context
 
@@ -266,7 +267,7 @@ Then use `${{ github.event.pull_request.number || inputs.pr_number }}` as the `p
 1. GitHub Action triggers on PR open (review), preview label/dispatch (preview), verify label/dispatch (verify), or CI failure (babysit)
 2. Action installs the Islo CLI and creates an ephemeral sandbox
 3. For preview: runs your `boot_command`, shares the configured port, and upserts one PR comment
-4. For verify: runs the configured `boot_command` or uses `preview_url` as the app entrypoint
+4. For preview verification: optionally runs the verification agent inside that same sandbox
 5. Inside the sandbox, reviewer scripts clone this repo and run the appropriate TypeScript entrypoint
 6. The script uses the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) to analyze code and take action
 7. Review, verify, and babysit sandboxes are destroyed after the script completes; preview sandboxes stay alive until PR close or label removal
@@ -307,7 +308,7 @@ The `boot_command` receives these variables:
 
 Set `boot_command: ''` to skip the boot step entirely (useful if your snapshot is already running).
 
-### Preview-only vs preview plus verify
+### Preview-only vs preview with verification
 
 Use `preview@v1` by itself when you only need a URL for humans to test:
 
@@ -318,7 +319,7 @@ Use `preview@v1` by itself when you only need a URL for humans to test:
 - pause the sandbox after idle time
 - delete the sandbox when the PR closes or the label is removed
 
-Add `verify@v1` after `preview@v1` when you want an agent to exercise the running preview and post evidence:
+Set `verify: "true"` when you want an agent to exercise that same preview sandbox and post evidence. This keeps the app, database, logs, and filesystem in one place:
 
 ```yaml
 - id: preview
@@ -329,19 +330,14 @@ Add `verify@v1` after `preview@v1` when you want an agent to exercise the runnin
     snapshot: my-preview-snapshot
     share_port: "3000"
     boot_command: ./scripts/preview-start.sh
-  env:
-    ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
-
-- uses: islo-labs/islo-reviewer/verify@v1
-  with:
-    pr_number: ${{ github.event.pull_request.number }}
-    boot_command: ""
-    preview_url: ${{ steps.preview.outputs.share-url }}
+    verify: "true"
   env:
     ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
 ```
 
-See `examples/preview-only.yml`, `examples/preview-verify.yml`, and `examples/VERIFY.preview.md` for fuller templates.
+Use standalone `verify@v1` for non-preview full-stack verification, or for advanced cases where you deliberately want a separate verification sandbox.
+
+See `examples/preview-only.yml` and `examples/VERIFY_AND_PREVIEW.md` for fuller templates.
 
 ## Safety
 

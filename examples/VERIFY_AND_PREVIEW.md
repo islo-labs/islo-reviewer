@@ -1,12 +1,13 @@
 # Preview verification guide
 
-Use the preview URL from the workflow input as the app entrypoint. Open it first, then pick a small set of checks that match the PR.
+Use the preview URL from `preview@v1` as the app entrypoint. Open it first, then pick a small set of checks that match the PR.
 
 ## App access
 
-- Preview URL: supplied by `islo-reviewer/preview@v1` through the `preview_url` input.
+- Preview URL: supplied by `preview@v1` when `verify: "true"` is enabled.
 - Login: describe test credentials here, or state that the preview uses seeded/fake data and does not need login.
-- Useful logs: `/tmp/islo-preview.log` inside the preview sandbox.
+- Useful logs: describe where the boot command writes logs, for example `/tmp/islo-preview.log`.
+- Useful state: describe any database, local files, seed data, or admin tools the agent can inspect in the same sandbox.
 
 ## What to verify
 

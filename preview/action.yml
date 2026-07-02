@@ -16,9 +16,13 @@ inputs:
   boot_command:
     description: 'Command to start the preview inside the sandbox'
     required: false
-    default: ''
+    default: 'launch-fullstack ${LAUNCH_ARGS}'
   env_file:
-    description: 'Optional env file to pass to islo use when running boot_command'
+    description: 'Path to an env file inside the sandbox to source before running boot_command or verify'
+    required: false
+    default: '/workspace/.fullstack-env'
+  related_prs:
+    description: 'Comma-separated repo:ref pairs for multi-repo preview boot (e.g. backend:pr/423,gateway:feat/billing)'
     required: false
     default: ''
   snapshot:
@@ -33,7 +37,6 @@ inputs:
     description: 'Memory in MB for the sandbox'
     required: false
     default: '16384'
-  
   share_port:
     description: 'Sandbox port to share'
     required: false
@@ -54,6 +57,22 @@ inputs:
     description: 'When true, remove the sandbox, shares, and preview PR comment instead of deploying'
     required: false
     default: 'false'
+  verify:
+    description: 'When true, run the verification agent inside the same preview sandbox after sharing the port'
+    required: false
+    default: 'false'
+  model:
+    description: 'Claude model to use when verify is true'
+    required: false
+    default: 'claude-opus-4-6'
+  max_turns:
+    description: 'Maximum agentic turns when verify is true'
+    required: false
+    default: '80'
+  max_budget_usd:
+    description: 'Stop verification when cost estimate reaches this USD value'
+    required: false
+    default: '20'
 
 outputs:
   sandbox-name:
@@ -87,6 +106,27 @@ runs:
           SANDBOX="preview-${{ github.event.repository.name }}-${PR_NUMBER}"
         fi
         echo "sandbox=${SANDBOX}" >> "$GITHUB_OUTPUT"
+
+    - name: Resolve launch args
+      if: inputs.cleanup != 'true'
+      id: launch
+      shell: bash
+      env:
+        REPO: ${{ github.event.repository.name }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        RELATED_PRS: ${{ inputs.related_prs }}
+      run: |
+        set -euo pipefail
+        LAUNCH_ARGS="--${REPO} pr/${PR_NUMBER}"
+        if [ -n "$RELATED_PRS" ]; then
+          IFS=',' read -ra PAIRS <<< "$RELATED_PRS"
+          for pair in "${PAIRS[@]}"; do
+            repo_name="${pair%%:*}"
+            ref="${pair#*:}"
+            LAUNCH_ARGS="${LAUNCH_ARGS} --${repo_name} ${ref}"
+          done
+        fi
+        echo "launch_args=${LAUNCH_ARGS}" >> "$GITHUB_OUTPUT"
 
     - name: Create or resume sandbox
       if: inputs.cleanup != 'true'
@@ -128,12 +168,11 @@ runs:
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
         SHARE_PORT: ${{ inputs.share_port }}
+        RELATED_PRS: ${{ inputs.related_prs }}
+        LAUNCH_ARGS: ${{ steps.launch.outputs.launch_args }}
       run: |
         set -euo pipefail
         boot_args=(islo use --no-config "$SANDBOX")
-        if [ -n "$ENV_FILE" ]; then
-          boot_args+=(--env-file "$ENV_FILE")
-        fi
         boot_args+=(
           --env "GH_TOKEN=${GH_TOKEN}"
           --env "GITHUB_TOKEN=${GH_TOKEN}"
@@ -141,8 +180,14 @@ runs:
           --env "REPO=${REPO}"
           --env "PR_NUMBER=${PR_NUMBER}"
           --env "SHARE_PORT=${SHARE_PORT}"
+          --env "RELATED_PRS=${RELATED_PRS}"
+          --env "LAUNCH_ARGS=${LAUNCH_ARGS}"
         )
-        boot_args+=(-- bash -lc "$BOOT_COMMAND")
+        boot_args+=(-- bash -lc "
+          source ~/.bashrc 2>/dev/null || true
+          [ -f \"${ENV_FILE}\" ] && source \"${ENV_FILE}\" || true
+          ${BOOT_COMMAND}
+        ")
         "${boot_args[@]}"
 
     - name: Create or reuse share URL
@@ -204,6 +249,34 @@ runs:
         else
           gh pr comment "$PR_NUMBER" -R "${{ github.repository }}" --body "$BODY"
         fi
+
+    - name: Verify preview
+      if: inputs.cleanup != 'true' && inputs.verify == 'true'
+      shell: bash
+      env:
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        ENV_FILE: ${{ inputs.env_file }}
+        PREVIEW_URL: ${{ steps.share.outputs.url }}
+      run: |
+        set -euo pipefail
+        islo use --no-config "$SANDBOX" \
+          --env "ENV_FILE=${ENV_FILE}" \
+          --env "PREVIEW_URL=${PREVIEW_URL}" \
+          -- bash -lc '
+            set -euo pipefail
+            cd /workspace
+            git clone https://github.com/islo-labs/islo-reviewer.git 2>/dev/null || (cd islo-reviewer && git pull)
+            cd islo-reviewer && npm ci
+            [ -f "$ENV_FILE" ] && source "$ENV_FILE" || true
+            npx tsx src/verify.ts \
+              "'"${{ github.repository }}"'" \
+              "'"${{ inputs.pr_number }}"'" \
+              "'"${{ inputs.model }}"'" \
+              "'"${{ inputs.max_turns }}"'" \
+              "'"${{ inputs.max_budget_usd }}"'" \
+              "'"${{ inputs.related_prs }}"'" \
+              "$PREVIEW_URL"
+          '
 
     - name: Cleanup preview
       if: inputs.cleanup == 'true'
