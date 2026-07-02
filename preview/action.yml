@@ -1,0 +1,280 @@
+name: 'Islo Preview'
+description: 'Create a shareable Islo preview sandbox for a pull request.'
+
+inputs:
+  pr_number:
+    description: 'PR number to preview'
+    required: true
+  sandbox:
+    description: 'Sandbox name to create or reuse. Defaults to preview-<repo>-<pr_number>.'
+    required: false
+    default: ''
+  islo_config:
+    description: 'Path to islo.yaml for sandbox config. The caller must check out the repo before this action.'
+    required: false
+    default: ''
+  boot_command:
+    description: 'Command to start the preview inside the sandbox'
+    required: false
+    default: 'launch-fullstack ${LAUNCH_ARGS} --preview true'
+  env_file:
+    description: 'Path to an env file inside the sandbox to source before running boot_command or verify'
+    required: false
+    default: '/workspace/.fullstack-env'
+  related_prs:
+    description: 'Comma-separated repo:ref pairs for multi-repo preview boot (e.g. backend:pr/423,gateway:feat/billing)'
+    required: false
+    default: ''
+  snapshot:
+    description: 'Sandbox snapshot name'
+    required: false
+    default: 'islo-fullstack'
+  cpu:
+    description: 'CPU cores for the sandbox'
+    required: false
+    default: '8'
+  memory:
+    description: 'Memory in MB for the sandbox'
+    required: false
+    default: '16384'
+  share_port:
+    description: 'Sandbox port to share'
+    required: false
+    default: '3000'
+  share_ttl:
+    description: 'Share URL TTL'
+    required: false
+    default: '168h'
+  pause_after_idle_seconds:
+    description: 'Seconds of inactivity before pausing the sandbox. Leave empty to disable.'
+    required: false
+    default: '1800'
+  comment_marker:
+    description: 'Marker used to upsert or delete the preview PR comment'
+    required: false
+    default: '<!-- islo-preview -->'
+  cleanup:
+    description: 'When true, remove the sandbox, shares, and preview PR comment instead of deploying'
+    required: false
+    default: 'false'
+  verify:
+    description: 'When true, run the verification agent inside the same preview sandbox after sharing the port'
+    required: false
+    default: 'false'
+  model:
+    description: 'Claude model to use when verify is true'
+    required: false
+    default: 'claude-opus-4-6'
+  max_turns:
+    description: 'Maximum agentic turns when verify is true'
+    required: false
+    default: '80'
+  max_budget_usd:
+    description: 'Stop verification when cost estimate reaches this USD value'
+    required: false
+    default: '20'
+
+outputs:
+  sandbox-name:
+    description: 'Created or reused sandbox name'
+    value: ${{ steps.resolve.outputs.sandbox }}
+  share-url:
+    description: 'Shared preview URL'
+    value: ${{ steps.share.outputs.url }}
+  share-port:
+    description: 'Shared preview port'
+    value: ${{ inputs.share_port }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install islo CLI
+      shell: bash
+      run: curl -fsSL https://islo.dev/install.sh | sh
+
+    - name: Resolve sandbox name
+      id: resolve
+      shell: bash
+      env:
+        REQUESTED_SANDBOX: ${{ inputs.sandbox }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+      run: |
+        set -euo pipefail
+        if [ -n "$REQUESTED_SANDBOX" ]; then
+          SANDBOX="$REQUESTED_SANDBOX"
+        else
+          SANDBOX="preview-${{ github.event.repository.name }}-${PR_NUMBER}"
+        fi
+        echo "sandbox=${SANDBOX}" >> "$GITHUB_OUTPUT"
+
+    - name: Create or resume sandbox
+      if: inputs.cleanup != 'true'
+      shell: bash
+      env:
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        ISLO_CONFIG: ${{ inputs.islo_config }}
+        SNAPSHOT: ${{ inputs.snapshot }}
+        CPU: ${{ inputs.cpu }}
+        MEMORY: ${{ inputs.memory }}
+        PAUSE_AFTER_IDLE_SECONDS: ${{ inputs.pause_after_idle_seconds }}
+      run: |
+        set -euo pipefail
+        sandbox_args=(islo use "$SANDBOX")
+        if [ -n "$ISLO_CONFIG" ]; then
+          sandbox_args+=(--config "$ISLO_CONFIG")
+        else
+          sandbox_args+=(--no-config)
+        fi
+        if [ -n "$SNAPSHOT" ]; then
+          sandbox_args+=(--snapshot "$SNAPSHOT")
+        fi
+        sandbox_args+=(--cpu "$CPU" --memory "$MEMORY")
+        if [ -n "$PAUSE_AFTER_IDLE_SECONDS" ]; then
+          sandbox_args+=(--pause-after-idle "$PAUSE_AFTER_IDLE_SECONDS" --auto-resume on_activity)
+        fi
+        sandbox_args+=(-- echo "Sandbox ready")
+        "${sandbox_args[@]}"
+
+    - name: Boot preview
+      if: inputs.cleanup != 'true' && inputs.boot_command != ''
+      shell: bash
+      env:
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        BOOT_COMMAND: ${{ inputs.boot_command }}
+        REPO: ${{ github.event.repository.name }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        RELATED_PRS: ${{ inputs.related_prs }}
+        SHARE_PORT: ${{ inputs.share_port }}
+      run: |
+        set -euo pipefail
+        LAUNCH_ARGS="--${REPO} pr/${PR_NUMBER}"
+        if [ -n "${RELATED_PRS}" ]; then
+          IFS=',' read -ra PAIRS <<< "${RELATED_PRS}"
+          for pair in "${PAIRS[@]}"; do
+            repo_name="${pair%%:*}"
+            ref="${pair#*:}"
+            LAUNCH_ARGS="${LAUNCH_ARGS} --${repo_name} ${ref}"
+          done
+        fi
+        export LAUNCH_ARGS
+
+        RESOLVED_CMD=$(envsubst '${REPO} ${PR_NUMBER} ${LAUNCH_ARGS} ${RELATED_PRS} ${SHARE_PORT}' <<< "${BOOT_COMMAND}")
+
+        echo "Running boot command: ${RESOLVED_CMD}"
+        islo use --no-config "$SANDBOX" -- bash -c "
+          source ~/.bashrc 2>/dev/null || true
+          ${RESOLVED_CMD}
+        "
+
+    - name: Create or reuse share URL
+      if: inputs.cleanup != 'true'
+      id: share
+      shell: bash
+      env:
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        SHARE_PORT: ${{ inputs.share_port }}
+        SHARE_TTL: ${{ inputs.share_ttl }}
+      run: |
+        set -euo pipefail
+        EXISTING_URL=$(
+          islo shares "$SANDBOX" --output json 2>/dev/null \
+            | jq -r --arg port "$SHARE_PORT" 'map(select((.port | tostring) == $port)) | first | .url // empty'
+        )
+        if [ -n "$EXISTING_URL" ]; then
+          SHARE_URL="$EXISTING_URL"
+        else
+          SHARE_URL=$(islo share "$SANDBOX" "$SHARE_PORT" --ttl "$SHARE_TTL" --output json | jq -r .url)
+        fi
+        echo "url=${SHARE_URL}" >> "$GITHUB_OUTPUT"
+
+    - name: Upsert preview PR comment
+      if: inputs.cleanup != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        SHARE_URL: ${{ steps.share.outputs.url }}
+        SHARE_PORT: ${{ inputs.share_port }}
+        SHARE_TTL: ${{ inputs.share_ttl }}
+        PAUSE_AFTER_IDLE_SECONDS: ${{ inputs.pause_after_idle_seconds }}
+        COMMENT_MARKER: ${{ inputs.comment_marker }}
+      run: |
+        set -euo pipefail
+        if [ -n "$PAUSE_AFTER_IDLE_SECONDS" ]; then
+          IDLE_TEXT="Pauses after ${PAUSE_AFTER_IDLE_SECONDS}s idle and resumes on activity."
+        else
+          IDLE_TEXT="Idle pause is disabled."
+        fi
+
+        BODY="${COMMENT_MARKER}
+        **Preview:** ${SHARE_URL}
+
+        Sandbox: \`${SANDBOX}\` - Port: \`${SHARE_PORT}\` - Expires in \`${SHARE_TTL}\`. ${IDLE_TEXT}"
+
+        EXISTING_COMMENT_ID=$(
+          gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            | jq -r --arg marker "$COMMENT_MARKER" '.[] | select(.body | contains($marker)) | .id' \
+            | awk 'NR == 1 { print; exit }'
+        )
+
+        if [ -n "$EXISTING_COMMENT_ID" ]; then
+          gh api -X PATCH \
+            "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" \
+            -f body="$BODY"
+        else
+          gh pr comment "$PR_NUMBER" -R "${{ github.repository }}" --body "$BODY"
+        fi
+
+    - name: Verify preview
+      if: inputs.cleanup != 'true' && inputs.verify == 'true'
+      shell: bash
+      env:
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        ENV_FILE: ${{ inputs.env_file }}
+        PREVIEW_URL: ${{ steps.share.outputs.url }}
+      run: |
+        set -euo pipefail
+        islo use --no-config "$SANDBOX" \
+          --env "ENV_FILE=${ENV_FILE}" \
+          --env "PREVIEW_URL=${PREVIEW_URL}" \
+          -- bash -lc '
+            set -euo pipefail
+            cd /workspace
+            git clone https://github.com/islo-labs/islo-reviewer.git 2>/dev/null || (cd islo-reviewer && git pull)
+            cd islo-reviewer && npm ci
+            [ -f "$ENV_FILE" ] && source "$ENV_FILE" || true
+            npx tsx src/verify.ts \
+              "'"${{ github.repository }}"'" \
+              "'"${{ inputs.pr_number }}"'" \
+              "'"${{ inputs.model }}"'" \
+              "'"${{ inputs.max_turns }}"'" \
+              "'"${{ inputs.max_budget_usd }}"'" \
+              "'"${{ inputs.related_prs }}"'" \
+              "$PREVIEW_URL"
+          '
+
+    - name: Cleanup preview
+      if: inputs.cleanup == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        SANDBOX: ${{ steps.resolve.outputs.sandbox }}
+        COMMENT_MARKER: ${{ inputs.comment_marker }}
+      run: |
+        set -euo pipefail
+        SHARE_IDS=$(islo shares "$SANDBOX" --output json 2>/dev/null | jq -r '.[].share_id' || true)
+        for share_id in $SHARE_IDS; do
+          islo unshare "$SANDBOX" "$share_id" || true
+        done
+        islo rm "$SANDBOX" --force || true
+
+        COMMENT_ID=$(
+          gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            | jq -r --arg marker "$COMMENT_MARKER" '.[] | select(.body | contains($marker)) | .id' \
+            | awk 'NR == 1 { print; exit }'
+        )
+        if [ -n "$COMMENT_ID" ]; then
+          gh api -X DELETE "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" || true
+        fi

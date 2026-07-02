@@ -9,10 +9,14 @@ inputs:
     description: 'Comma-separated repo:ref pairs for multi-repo verification (e.g. backend:pr/423,gateway:feat/billing)'
     required: false
     default: ''
+  preview_url:
+    description: 'Optional share URL for an already-running preview. When set, the agent verifies against this URL.'
+    required: false
+    default: ''
   boot_command:
     description: >
       Shell command to boot the stack inside the sandbox. Supports variable substitution:
-      ${REPO} (repo name), ${PR_NUMBER}, ${RELATED_ARGS} (built from related_prs as --repo ref flags).
+      ${REPO} (repo name), ${PR_NUMBER}, ${LAUNCH_ARGS} (built from related_prs as --repo ref flags).
       Set to empty string to skip the boot step (if your snapshot is already running).
     required: false
     default: 'launch-fullstack ${LAUNCH_ARGS}'
@@ -99,6 +103,7 @@ runs:
       env:
         SANDBOX: verify-${{ github.event.repository.name }}-${{ inputs.pr_number }}
         ENV_FILE: ${{ inputs.env_file }}
+        PREVIEW_URL: ${{ inputs.preview_url }}
       run: |
         islo use --no-config "${SANDBOX}" -- bash -c '
           set -euo pipefail
@@ -112,7 +117,8 @@ runs:
             "'"${{ inputs.model }}"'" \
             "'"${{ inputs.max_turns }}"'" \
             "'"${{ inputs.max_budget_usd }}"'" \
-            "'"${{ inputs.related_prs }}"'"
+            "'"${{ inputs.related_prs }}"'" \
+            "'"${PREVIEW_URL}"'"
         '
 
     - name: Cleanup
