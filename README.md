@@ -72,20 +72,7 @@ jobs:
       - uses: islo-labs/islo-reviewer/preview@v1
         with:
           pr_number: ${{ github.event.pull_request.number }}
-          islo_config: islo.yaml
-          snapshot: my-preview-snapshot
           share_port: "3000"
-          boot_command: |
-            cd "/workspace/${REPO}"
-            gh pr checkout "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}"
-            npm ci
-            nohup npm run start -- --host 0.0.0.0 --port "${SHARE_PORT}" > /tmp/islo-preview.log 2>&1 &
-            for _ in $(seq 1 60); do
-              curl -fsS "http://localhost:${SHARE_PORT}" >/dev/null && exit 0
-              sleep 2
-            done
-            tail -50 /tmp/islo-preview.log
-            exit 1
         env:
           ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
   cleanup:
@@ -182,7 +169,7 @@ Preview has additional inputs:
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `sandbox` | no | `preview-<repo>-<pr_number>` | Sandbox name to create or reuse |
-| `boot_command` | no | `launch-fullstack ${LAUNCH_ARGS}` | Command to start the app inside the sandbox |
+| `boot_command` | no | `launch-fullstack ${LAUNCH_ARGS} --preview true` | Command to start the app inside the sandbox |
 | `env_file` | no | `/workspace/.fullstack-env` | Env file inside the sandbox to source before booting or verifying |
 | `share_port` | no | `3000` | Sandbox port to share |
 | `share_ttl` | no | `168h` | Share URL TTL |
@@ -313,7 +300,7 @@ Set `boot_command: ''` to skip the boot step entirely (useful if your snapshot i
 Use `preview@v1` by itself when you only need a URL for humans to test:
 
 - label the PR with `preview`
-- boot the app in an Islo sandbox
+- boot the app in an Islo sandbox using `launch-fullstack ${LAUNCH_ARGS} --preview true`
 - share the app port
 - post or update one PR comment
 - pause the sandbox after idle time
@@ -326,10 +313,7 @@ Set `verify: "true"` when you want an agent to exercise that same preview sandbo
   uses: islo-labs/islo-reviewer/preview@v1
   with:
     pr_number: ${{ github.event.pull_request.number }}
-    islo_config: islo.yaml
-    snapshot: my-preview-snapshot
     share_port: "3000"
-    boot_command: ./scripts/preview-start.sh
     verify: "true"
   env:
     ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}

@@ -16,7 +16,7 @@ inputs:
   boot_command:
     description: 'Command to start the preview inside the sandbox'
     required: false
-    default: 'launch-fullstack ${LAUNCH_ARGS}'
+    default: 'launch-fullstack ${LAUNCH_ARGS} --preview true'
   env_file:
     description: 'Path to an env file inside the sandbox to source before running boot_command or verify'
     required: false
@@ -107,27 +107,6 @@ runs:
         fi
         echo "sandbox=${SANDBOX}" >> "$GITHUB_OUTPUT"
 
-    - name: Resolve launch args
-      if: inputs.cleanup != 'true'
-      id: launch
-      shell: bash
-      env:
-        REPO: ${{ github.event.repository.name }}
-        PR_NUMBER: ${{ inputs.pr_number }}
-        RELATED_PRS: ${{ inputs.related_prs }}
-      run: |
-        set -euo pipefail
-        LAUNCH_ARGS="--${REPO} pr/${PR_NUMBER}"
-        if [ -n "$RELATED_PRS" ]; then
-          IFS=',' read -ra PAIRS <<< "$RELATED_PRS"
-          for pair in "${PAIRS[@]}"; do
-            repo_name="${pair%%:*}"
-            ref="${pair#*:}"
-            LAUNCH_ARGS="${LAUNCH_ARGS} --${repo_name} ${ref}"
-          done
-        fi
-        echo "launch_args=${LAUNCH_ARGS}" >> "$GITHUB_OUTPUT"
-
     - name: Create or resume sandbox
       if: inputs.cleanup != 'true'
       shell: bash
@@ -162,33 +141,30 @@ runs:
       env:
         SANDBOX: ${{ steps.resolve.outputs.sandbox }}
         BOOT_COMMAND: ${{ inputs.boot_command }}
-        ENV_FILE: ${{ inputs.env_file }}
-        GH_TOKEN: ${{ github.token }}
-        GITHUB_REPOSITORY_NAME: ${{ github.repository }}
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
-        SHARE_PORT: ${{ inputs.share_port }}
         RELATED_PRS: ${{ inputs.related_prs }}
-        LAUNCH_ARGS: ${{ steps.launch.outputs.launch_args }}
+        SHARE_PORT: ${{ inputs.share_port }}
       run: |
         set -euo pipefail
-        boot_args=(islo use --no-config "$SANDBOX")
-        boot_args+=(
-          --env "GH_TOKEN=${GH_TOKEN}"
-          --env "GITHUB_TOKEN=${GH_TOKEN}"
-          --env "GITHUB_REPOSITORY=${GITHUB_REPOSITORY_NAME}"
-          --env "REPO=${REPO}"
-          --env "PR_NUMBER=${PR_NUMBER}"
-          --env "SHARE_PORT=${SHARE_PORT}"
-          --env "RELATED_PRS=${RELATED_PRS}"
-          --env "LAUNCH_ARGS=${LAUNCH_ARGS}"
-        )
-        boot_args+=(-- bash -lc "
+        LAUNCH_ARGS="--${REPO} pr/${PR_NUMBER}"
+        if [ -n "${RELATED_PRS}" ]; then
+          IFS=',' read -ra PAIRS <<< "${RELATED_PRS}"
+          for pair in "${PAIRS[@]}"; do
+            repo_name="${pair%%:*}"
+            ref="${pair#*:}"
+            LAUNCH_ARGS="${LAUNCH_ARGS} --${repo_name} ${ref}"
+          done
+        fi
+        export LAUNCH_ARGS
+
+        RESOLVED_CMD=$(envsubst '${REPO} ${PR_NUMBER} ${LAUNCH_ARGS} ${RELATED_PRS} ${SHARE_PORT}' <<< "${BOOT_COMMAND}")
+
+        echo "Running boot command: ${RESOLVED_CMD}"
+        islo use --no-config "$SANDBOX" -- bash -c "
           source ~/.bashrc 2>/dev/null || true
-          [ -f \"${ENV_FILE}\" ] && source \"${ENV_FILE}\" || true
-          ${BOOT_COMMAND}
-        ")
-        "${boot_args[@]}"
+          ${RESOLVED_CMD}
+        "
 
     - name: Create or reuse share URL
       if: inputs.cleanup != 'true'

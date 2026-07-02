@@ -30,22 +30,8 @@ jobs:
       - uses: islo-labs/islo-reviewer/preview@v1
         with:
           pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}
-          islo_config: islo.yaml
-          snapshot: my-preview-snapshot
           share_port: "3000"
           pause_after_idle_seconds: "1800"
-          boot_command: |
-            cd "/workspace/${REPO}"
-            gh pr checkout "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}"
-            npm ci
-            nohup npm run start -- --host 0.0.0.0 --port "${SHARE_PORT}" > /tmp/islo-preview.log 2>&1 &
-            for _ in $(seq 1 60); do
-              curl -fsS "http://localhost:${SHARE_PORT}" >/dev/null && exit 0
-              sleep 2
-            done
-            echo "Preview did not become ready"
-            tail -50 /tmp/islo-preview.log
-            exit 1
         env:
           ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
 
