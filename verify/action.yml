@@ -67,7 +67,10 @@ runs:
         CLEANUP: 'false'
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
-      run: bash "${{ github.action_path }}/../run/run.sh"
+      run: |
+        source "${{ github.action_path }}/../run/launch-args.sh"
+        build_launch_args
+        bash "${{ github.action_path }}/../run/run.sh"
 
     - name: Run verification agent
       shell: bash

@@ -16,7 +16,7 @@ inputs:
   boot_command:
     description: 'Command to start the preview inside the sandbox'
     required: false
-    default: 'launch-fullstack ${LAUNCH_ARGS} --preview true'
+    default: 'launch-fullstack ${LAUNCH_ARGS}'
   env_file:
     description: 'Path to an env file inside the sandbox to source before verify'
     required: false
@@ -105,7 +105,7 @@ runs:
 
     - name: Install islo CLI
       shell: bash
-      run: curl -fsSL https://islo.dev/install.sh | sh
+      run: bash "${{ github.action_path }}/../run/install-islo.sh"
 
     - name: Cleanup preview shares and comment
       if: inputs.cleanup == 'true'
@@ -148,6 +148,8 @@ runs:
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
       run: |
+        source "${{ github.action_path }}/../run/launch-args.sh"
+        build_launch_args
         bash "${{ github.action_path }}/../run/run.sh"
         echo "sandbox-name=${SANDBOX}" >> "$GITHUB_OUTPUT"
 

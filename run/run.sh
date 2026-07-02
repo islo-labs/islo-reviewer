@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-curl -fsSL https://islo.dev/install.sh | sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${SCRIPT_DIR}/install-islo.sh"
 
 if [ "${CLEANUP:-false}" = "true" ]; then
   islo rm "$SANDBOX" --force || true
@@ -27,17 +28,6 @@ sandbox_args+=(-- echo "Sandbox ready")
 if [ -z "${BOOT_COMMAND:-}" ]; then
   exit 0
 fi
-
-LAUNCH_ARGS="--${REPO} pr/${PR_NUMBER}"
-if [ -n "${RELATED_PRS:-}" ]; then
-  IFS=',' read -ra PAIRS <<< "${RELATED_PRS}"
-  for pair in "${PAIRS[@]}"; do
-    repo_name="${pair%%:*}"
-    ref="${pair#*:}"
-    LAUNCH_ARGS="${LAUNCH_ARGS} --${repo_name} ${ref}"
-  done
-fi
-export LAUNCH_ARGS
 
 RESOLVED_CMD=$(envsubst '${REPO} ${PR_NUMBER} ${LAUNCH_ARGS} ${RELATED_PRS} ${SHARE_PORT}' <<< "$BOOT_COMMAND")
 

@@ -68,4 +68,7 @@ runs:
         CLEANUP: ${{ inputs.cleanup }}
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
-      run: bash "${{ github.action_path }}/run.sh"
+      run: |
+        source "${{ github.action_path }}/launch-args.sh"
+        build_launch_args
+        bash "${{ github.action_path }}/run.sh"

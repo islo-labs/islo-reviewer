@@ -154,7 +154,7 @@ The actions share the common sandbox and agent inputs where they apply:
 | `run_id` | **yes** (babysit) | — | Failed workflow run ID |
 | `related_prs` | no (preview, verify) | `''` | Comma-separated `repo:ref` pairs for multi-repo boot and verification |
 | `preview_url` | no (verify only) | `''` | Share URL for an already-running preview. Advanced use only; `preview@v1` verifies its own sandbox when `verify: "true"`. |
-| `boot_command` | no (preview, verify) | `launch-fullstack ${LAUNCH_ARGS}` (`--preview true` for preview) | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}`, and for preview `${SHARE_PORT}`. Set to `''` to skip. |
+| `boot_command` | no (preview, verify) | `launch-fullstack ${LAUNCH_ARGS}` | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}`, and for preview `${SHARE_PORT}`. Set to `''` to skip. |
 | `env_file` | no (preview, verify) | `/workspace/.fullstack-env` | Path to env file inside the sandbox to source before the verification agent runs |
 | `islo_config` | no | `''` | Path to an `islo.yaml` for sandbox config. Triggers a repo checkout. |
 | `snapshot` | no | `''` (`islo-fullstack` for preview and verify) | Sandbox snapshot name |
@@ -169,7 +169,7 @@ Preview has additional inputs:
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `sandbox` | no | `preview-<repo>-<pr_number>` | Sandbox name to create or reuse |
-| `boot_command` | no | `launch-fullstack ${LAUNCH_ARGS} --preview true` | Command to start the app inside the sandbox |
+| `boot_command` | no | `launch-fullstack ${LAUNCH_ARGS}` | Command to start the app inside the sandbox |
 | `env_file` | no | `/workspace/.fullstack-env` | Env file inside the sandbox to source before booting or verifying |
 | `share_port` | no | `3000` | Sandbox port to share |
 | `share_ttl` | no | `168h` | Share URL TTL |
@@ -300,7 +300,7 @@ Set `boot_command: ''` to skip the boot step entirely (useful if your snapshot i
 Use `preview@v1` by itself when you only need a URL for humans to test:
 
 - label the PR with `preview`
-- boot the app in an Islo sandbox using `launch-fullstack ${LAUNCH_ARGS} --preview true`
+- boot the app in an Islo sandbox using `launch-fullstack ${LAUNCH_ARGS}`
 - share the app port
 - post or update one PR comment
 - pause the sandbox after idle time
@@ -321,7 +321,7 @@ Set `verify: "true"` when you want an agent to exercise that same preview sandbo
 
 Use standalone `verify@v1` for non-preview full-stack verification, or for advanced cases where you deliberately want a separate verification sandbox.
 
-If the default `launch-fullstack ${LAUNCH_ARGS} --preview true` command is not enough, override `boot_command`. Keep the command project-specific, but keep sharing and cleanup in `preview@v1`.
+If the default `launch-fullstack ${LAUNCH_ARGS}` command is not enough, override `boot_command`. Keep the command project-specific, but keep sharing and cleanup in `preview@v1`.
 
 ## Safety
 
