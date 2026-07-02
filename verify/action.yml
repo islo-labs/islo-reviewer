@@ -64,7 +64,7 @@ runs:
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
       run: |
-        bash "${{ github.action_path }}/../scripts/launch-fullstack.sh"
+        bash "${{ github.action_path }}/../src/launch-fullstack.sh"
 
     - name: Run verification agent
       shell: bash

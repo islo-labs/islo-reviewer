@@ -39,7 +39,7 @@ runs:
   steps:
     - name: Install islo CLI
       shell: bash
-      run: curl -fsSL https://islo.dev/install.sh | sh
+      run: bash "${{ github.action_path }}/../src/install-islo.sh"
 
     - name: Checkout repo
       if: inputs.islo_config != ''

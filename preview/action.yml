@@ -105,7 +105,7 @@ runs:
 
     - name: Install islo CLI
       shell: bash
-      run: bash "${{ github.action_path }}/../scripts/install-islo.sh"
+      run: bash "${{ github.action_path }}/../src/install-islo.sh"
 
     - name: Cleanup preview shares and comment
       if: inputs.cleanup == 'true'
@@ -148,7 +148,7 @@ runs:
         REPO: ${{ github.event.repository.name }}
         PR_NUMBER: ${{ inputs.pr_number }}
       run: |
-        bash "${{ github.action_path }}/../scripts/launch-fullstack.sh"
+        bash "${{ github.action_path }}/../src/launch-fullstack.sh"
         echo "sandbox-name=${SANDBOX}" >> "$GITHUB_OUTPUT"
 
     - name: Create or reuse share URL
