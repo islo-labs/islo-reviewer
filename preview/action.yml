@@ -219,12 +219,10 @@ runs:
       env:
         SANDBOX: ${{ steps.resolve.outputs.sandbox }}
         ENV_FILE: ${{ inputs.env_file }}
-        PREVIEW_URL: ${{ steps.share.outputs.url }}
       run: |
         set -euo pipefail
         islo use --no-config "$SANDBOX" \
           --env "ENV_FILE=${ENV_FILE}" \
-          --env "PREVIEW_URL=${PREVIEW_URL}" \
           -- bash -lc '
             set -euo pipefail
             cd /workspace
@@ -237,6 +235,5 @@ runs:
               "'"${{ inputs.model }}"'" \
               "'"${{ inputs.max_turns }}"'" \
               "'"${{ inputs.max_budget_usd }}"'" \
-              "'"${{ inputs.related_prs }}"'" \
-              "$PREVIEW_URL"
+              "'"${{ inputs.related_prs }}"'"
           '

@@ -3,7 +3,6 @@ import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { getPRInfo } from "./utils/github.js";
-import { checkoutPR, ensureRepo } from "./utils/git.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -14,13 +13,12 @@ const [
   maxTurnsStr,
   maxBudgetStr,
   relatedPrsStr,
-  previewUrl,
 ] =
   process.argv.slice(2);
 
 if (!repo || !prNumber) {
   console.error(
-    "Usage: tsx src/verify.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd] [related-prs] [preview-url]"
+    "Usage: tsx src/verify.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd] [related-prs]"
   );
   process.exit(1);
 }
@@ -33,14 +31,6 @@ console.log(`Verifying PR #${prNumber} in ${repo}`);
 const { headRef, baseRef, title } = getPRInfo(repo, prNumber);
 console.log(`PR: "${title}"`);
 console.log(`Branch: ${headRef} → ${baseRef}`);
-
-if (previewUrl) {
-  console.log(`Preview URL: ${previewUrl}`);
-  if (!existsSync(cwd)) {
-    ensureRepo(repo, cwd);
-    checkoutPR(cwd, headRef, baseRef);
-  }
-}
 
 if (relatedPrsStr) {
   console.log(`Related PRs: ${relatedPrsStr}`);
@@ -65,7 +55,6 @@ const prompt = promptTemplate
   .replaceAll("{{BASE_REF}}", baseRef)
   .replaceAll("{{PR_TITLE}}", title)
   .replaceAll("{{RELATED_PRS}}", relatedPrsStr || "none")
-  .replaceAll("{{PREVIEW_URL}}", previewUrl || "none")
   .replaceAll("{{CONTEXT_SECTION}}", contextSection);
 
 console.log("Starting verification agent...");

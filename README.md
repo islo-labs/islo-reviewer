@@ -153,7 +153,6 @@ The actions share the common sandbox and agent inputs where they apply:
 | `pr_number` | **yes** (review, preview, verify) | — | PR number to review/preview/verify |
 | `run_id` | **yes** (babysit) | — | Failed workflow run ID |
 | `related_prs` | no (preview, verify) | `''` | Comma-separated `repo:ref` pairs for multi-repo boot and verification |
-| `preview_url` | no (verify only) | `''` | Share URL for an already-running preview. Advanced use only; `preview@v1` verifies its own sandbox when `verify: "true"`. |
 | `boot_command` | no (preview, verify) | `launch-fullstack ${LAUNCH_ARGS}` | Shell command to boot the stack. Supports `${REPO}`, `${PR_NUMBER}`, `${LAUNCH_ARGS}`, `${RELATED_PRS}`, and for preview `${SHARE_PORT}`. Set to `''` to skip. |
 | `env_file` | no (preview, verify) | `/workspace/.fullstack-env` | Path to env file inside the sandbox to source before the verification agent runs |
 | `islo_config` | no | `''` | Path to an `islo.yaml` for sandbox config. Triggers a repo checkout. |
