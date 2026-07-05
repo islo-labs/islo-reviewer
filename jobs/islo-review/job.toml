@@ -24,6 +24,7 @@ pattern = "^islo-review-[a-f0-9]{12}-[0-9]+$"
 type = "string"
 required = true
 description = "islo-reviewer git ref to run, usually the action ref such as v1."
+pattern = "^[a-zA-Z0-9._/@^~-]+$"
 
 [job.params.model]
 type = "string"
@@ -74,7 +75,7 @@ exec = [
 set -euo pipefail
 cd /workspace
 rm -rf islo-reviewer
-git clone https://github.com/islo-labs/islo-reviewer.git
+git clone --depth=1 --no-checkout https://github.com/islo-labs/islo-reviewer.git
 cd islo-reviewer
 git fetch --depth=1 origin "{{reviewer_ref}}"
 git -c advice.detachedHead=false checkout FETCH_HEAD
