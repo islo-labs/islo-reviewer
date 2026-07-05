@@ -62,6 +62,14 @@ runs:
         REPO_HASH="$(node -e 'const crypto = require("crypto"); process.stdout.write(crypto.createHash("sha256").update(process.env.REPO).digest("hex").slice(0, 12));')"
         SANDBOX_NAME="islo-review-${REPO_HASH}-${PR_NUMBER}"
         echo "Using review sandbox ${SANDBOX_NAME}"
+        STATUS_JSON="$(islo status "${SANDBOX_NAME}" --output json 2>/dev/null || true)"
+        if [ -n "${STATUS_JSON}" ]; then
+          STATUS="$(printf '%s' "${STATUS_JSON}" | node -e 'const fs = require("fs"); const input = fs.readFileSync(0, "utf8"); process.stdout.write(JSON.parse(input).status || "");')"
+          if [ "${STATUS}" = "failed" ]; then
+            echo "Removing failed review sandbox ${SANDBOX_NAME} before retry"
+            islo rm "${SANDBOX_NAME}" --force || true
+          fi
+        fi
         islo job run islo-review --watch \
           --param repo="${REPO}" \
           --param pr_number="${PR_NUMBER}" \
