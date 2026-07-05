@@ -50,7 +50,7 @@ teardown_on_complete = false
 [run.sandbox]
 mode = "ensure"
 name = "{{sandbox_name}}"
-image = "islo/default"
+image = "docker.io/library/islo-runner:latest"
 snapshot_name = "islo-stack"
 vcpus = 4
 memory_mb = 4096
