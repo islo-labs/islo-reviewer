@@ -1,24 +1,24 @@
 name: 'Islo PR Review'
-description: 'Automated PR review powered by Islo sandboxes and Claude'
+description: 'Automated PR review powered by Islo jobs and Claude'
 
 inputs:
   pr_number:
     description: 'PR number to review'
     required: true
   islo_config:
-    description: 'Path to islo.yaml for sandbox config (e.g., .github/islo-review.yaml). Triggers repo checkout.'
+    description: 'Deprecated for jobs. Configure sandbox setup in the deployed islo-review job.'
     required: false
     default: ''
   snapshot:
-    description: 'Sandbox snapshot name'
+    description: 'Deprecated for jobs. Configure snapshot_name in the deployed islo-review job.'
     required: false
     default: ''
   cpu:
-    description: 'CPU cores for the sandbox'
+    description: 'Deprecated for jobs. Configure vcpus in the deployed islo-review job.'
     required: false
     default: '4'
   memory:
-    description: 'Memory in MB for the sandbox'
+    description: 'Deprecated for jobs. Configure memory_mb in the deployed islo-review job.'
     required: false
     default: '4096'
   model:
@@ -41,50 +41,28 @@ runs:
       shell: bash
       run: curl -fsSL https://islo.dev/install.sh | sh
 
-    - name: Checkout repo
-      if: inputs.islo_config != ''
-      uses: actions/checkout@v4
-
-    - name: Create sandbox
+    - name: Validate review job
       shell: bash
-      env:
-        SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
       run: |
-        ARGS=""
-        if [ -n "${{ inputs.islo_config }}" ]; then
-          ARGS="$ARGS --config ${{ inputs.islo_config }}"
-        else
-          ARGS="$ARGS --no-config"
-        fi
-        if [ -n "${{ inputs.snapshot }}" ]; then
-          ARGS="$ARGS --snapshot ${{ inputs.snapshot }}"
-        fi
-        islo use "${SANDBOX}" \
-          $ARGS \
-          --cpu ${{ inputs.cpu }} --memory ${{ inputs.memory }} \
-          -- echo "Sandbox ready"
+        set -euo pipefail
+        JOB_JSON="$(islo job -o json get islo-review)"
+        printf '%s' "${JOB_JSON}" | node "${GITHUB_ACTION_PATH}/validate-job.mjs"
 
     - name: Review
       shell: bash
       env:
-        SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
+        REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        REVIEWER_REF: ${{ github.action_ref || 'v1' }}
+        MODEL: ${{ inputs.model }}
+        MAX_TURNS: ${{ inputs.max_turns }}
+        MAX_BUDGET_USD: ${{ inputs.max_budget_usd }}
       run: |
-        islo use --no-config "${SANDBOX}" -- bash -c '
-          set -euo pipefail
-          cd /workspace
-          git clone https://github.com/islo-labs/islo-reviewer.git
-          cd islo-reviewer && npm ci
-          npx tsx src/review.ts \
-            "'"${{ github.repository }}"'" \
-            "'"${{ inputs.pr_number }}"'" \
-            "'"${{ inputs.model }}"'" \
-            "'"${{ inputs.max_turns }}"'" \
-            "'"${{ inputs.max_budget_usd }}"'"
-        '
-
-    - name: Cleanup
-      if: always()
-      shell: bash
-      env:
-        SANDBOX: review-${{ github.event.repository.name }}-${{ inputs.pr_number }}
-      run: islo rm "${SANDBOX}" --force || true
+        set -euo pipefail
+        islo job run islo-review --watch \
+          --param repo="${REPO}" \
+          --param pr_number="${PR_NUMBER}" \
+          --param reviewer_ref="${REVIEWER_REF}" \
+          --param model="${MODEL}" \
+          --param max_turns="${MAX_TURNS}" \
+          --param max_budget_usd="${MAX_BUDGET_USD}"
