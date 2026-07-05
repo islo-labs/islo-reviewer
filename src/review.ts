@@ -1,5 +1,5 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { ensureRepo, checkoutPR } from "./utils/git.js";
@@ -15,6 +15,42 @@ if (!repo || !prNumber) {
 
 const repoShort = repo.split("/")[1];
 const cwd = `/workspace/${repoShort}`;
+
+function sessionStatePath(repo: string, prNumber: string): string {
+  const key = `${repo}-${prNumber}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
+  return join("/workspace/.islo-reviewer/sessions", `${key}.json`);
+}
+
+function readSessionId(path: string): string | undefined {
+  if (!existsSync(path)) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf-8"));
+    return typeof parsed.session_id === "string" ? parsed.session_id : undefined;
+  } catch (error) {
+    console.warn(`Ignoring unreadable review session state at ${path}: ${error}`);
+    return undefined;
+  }
+}
+
+function writeSessionId(path: string, sessionId: string): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(
+    path,
+    `${JSON.stringify(
+      {
+        repo,
+        pr_number: prNumber,
+        session_id: sessionId,
+        updated_at: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
 
 console.log(`Reviewing PR #${prNumber} in ${repo}`);
 
@@ -42,19 +78,44 @@ const prompt = promptTemplate
   .replaceAll("{{BASE_REF}}", baseRef)
   .replaceAll("{{CONTEXT_SECTION}}", contextSection);
 
-for await (const message of query({
-  prompt,
-  options: {
-    cwd,
-    permissionMode: "bypassPermissions",
-    allowDangerouslySkipPermissions: true,
-    maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
-    model: model || "claude-opus-4-6",
-    ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
-  },
-})) {
-  if (message.type === "assistant") {
-    process.stdout.write(".");
+const sessionPath = sessionStatePath(repo, prNumber);
+const previousSessionId = readSessionId(sessionPath);
+let sessionId = previousSessionId;
+
+if (previousSessionId) {
+  console.log(`Resuming Claude review session ${previousSessionId}`);
+}
+
+try {
+  for await (const message of query({
+    prompt,
+    options: {
+      cwd,
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+      maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
+      model: model || "claude-opus-4-6",
+      ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
+      ...(previousSessionId ? { resume: previousSessionId } : {}),
+    },
+  })) {
+    if (
+      message.type === "system" &&
+      message.subtype === "init" &&
+      typeof message.session_id === "string"
+    ) {
+      sessionId = message.session_id;
+    }
+    if (message.type === "result" && typeof message.session_id === "string") {
+      sessionId = message.session_id;
+    }
+    if (message.type === "assistant") {
+      process.stdout.write(".");
+    }
+  }
+} finally {
+  if (sessionId) {
+    writeSessionId(sessionPath, sessionId);
   }
 }
 
