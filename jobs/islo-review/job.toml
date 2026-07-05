@@ -14,6 +14,12 @@ type = "integer"
 required = true
 description = "Pull request number to review."
 
+[job.params.sandbox_name]
+type = "string"
+required = true
+description = "Stable PR-scoped sandbox name to reuse across review runs."
+pattern = "^islo-review-[a-f0-9]{12}-[0-9]+$"
+
 [job.params.reviewer_ref]
 type = "string"
 required = true
@@ -39,16 +45,21 @@ fail_fast = true
 fanout = false
 timeout = 900
 workdir = "/workspace"
-teardown_on_complete = true
+teardown_on_complete = false
 
 [run.sandbox]
-mode = "provision"
+mode = "ensure"
+name = "{{sandbox_name}}"
 image = "islo/default"
 snapshot_name = "islo-stack"
 vcpus = 4
 memory_mb = 4096
 gateway_profile = "default"
-init = { type = "full" }
+init = { type = "minimal" }
+
+[run.sandbox.lifecycle]
+pause_after = 1800
+delete_after = 604800
 
 [[run.tasks]]
 name = "review"
@@ -71,3 +82,7 @@ npm ci
 npx tsx src/review.ts "{{repo}}" "{{pr_number}}" "{{model}}" "{{max_turns}}" "{{max_budget_usd}}"
 ''',
 ]
+
+[[run.tasks.steps]]
+name = "pause-review-sandbox"
+pause = true

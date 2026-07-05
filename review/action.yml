@@ -59,9 +59,13 @@ runs:
         MAX_BUDGET_USD: ${{ inputs.max_budget_usd }}
       run: |
         set -euo pipefail
+        REPO_HASH="$(node -e 'const crypto = require("crypto"); process.stdout.write(crypto.createHash("sha256").update(process.env.REPO).digest("hex").slice(0, 12));')"
+        SANDBOX_NAME="islo-review-${REPO_HASH}-${PR_NUMBER}"
+        echo "Using review sandbox ${SANDBOX_NAME}"
         islo job run islo-review --watch \
           --param repo="${REPO}" \
           --param pr_number="${PR_NUMBER}" \
+          --param sandbox_name="${SANDBOX_NAME}" \
           --param reviewer_ref="${REVIEWER_REF}" \
           --param model="${MODEL}" \
           --param max_turns="${MAX_TURNS}" \

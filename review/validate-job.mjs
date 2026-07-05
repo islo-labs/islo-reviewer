@@ -1,10 +1,17 @@
 const REQUIRED_PARAMS = new Map([
   ["repo", "string"],
   ["pr_number", "integer"],
+  ["sandbox_name", "string"],
   ["reviewer_ref", "string"],
   ["model", "string"],
   ["max_turns", "integer"],
   ["max_budget_usd", "number"],
+]);
+const REQUIRED_PARAM_NAMES = new Set([
+  "repo",
+  "pr_number",
+  "sandbox_name",
+  "reviewer_ref",
 ]);
 
 export function validateReviewJob(job) {
@@ -36,6 +43,9 @@ export function validateReviewJob(job) {
         `param '${name}' must be type '${expectedType}', got '${param.type}'`,
       );
     }
+    if (REQUIRED_PARAM_NAMES.has(name) && param.required !== true) {
+      errors.push(`param '${name}' must be required`);
+    }
   }
 
   return errors;
@@ -66,7 +76,7 @@ async function main() {
     for (const error of errors) {
       console.error(`- ${error}`);
     }
-    console.error("Deploy a compatible islo-review job from the Islo UI.");
+    console.error("Deploy a compatible islo-review job from jobs/islo-review/job.toml.");
     process.exit(1);
   }
 

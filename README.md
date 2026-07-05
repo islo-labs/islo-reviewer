@@ -12,9 +12,10 @@ Add an `ISLO_API_KEY` secret to your repo, deploy the `islo-review` job once in 
 name: PR Review
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, closed]
 jobs:
   review:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -23,6 +24,21 @@ jobs:
           pr_number: ${{ github.event.pull_request.number }}
         env:
           ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+  cleanup-review:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install islo CLI
+        run: curl -fsSL https://islo.dev/install.sh | sh
+      - name: Remove review sandbox
+        env:
+          ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          REPO_HASH="$(node -e 'const crypto = require("crypto"); process.stdout.write(crypto.createHash("sha256").update(process.env.REPO).digest("hex").slice(0, 12));')"
+          islo rm "islo-review-${REPO_HASH}-${PR_NUMBER}" --force || true
 ```
 
 **`.github/workflows/islo-babysit.yml`** — fixes CI failures automatically:
@@ -152,12 +168,13 @@ The deployed job must expose these params:
 
 - `repo`, string, required.
 - `pr_number`, integer, required.
+- `sandbox_name`, string, required.
 - `reviewer_ref`, string, required.
 - `model`, string.
 - `max_turns`, integer.
 - `max_budget_usd`, number.
 
-The job owns sandbox settings such as image, snapshot, CPU, memory, workdir, and teardown. The GitHub Action only passes review inputs and waits for the run result.
+The action computes `sandbox_name` from the repository and PR number, so follow-up reviews reuse the same PR-scoped sandbox. The job owns sandbox settings such as image, snapshot, CPU, memory, workdir, pause lifecycle, and eventual cleanup. The GitHub Action passes review inputs and waits for the run result.
 
 Before each review, the action runs:
 
@@ -166,6 +183,10 @@ islo job -o json get islo-review
 ```
 
 It fails early if the job is missing, has no deployed version, or does not expose the required params. Then it runs `islo job run islo-review --watch`.
+
+The deployed job uses `ensure` mode for the PR sandbox and pauses it after a successful review. `src/review.ts` stores the Claude Agent SDK `session_id` in the sandbox and resumes that exact session on later reviews of the same PR.
+
+Add a `pull_request.closed` cleanup job in each consuming repo to remove the reusable review sandbox when the PR is merged or closed. Without that cleanup, the manifest's lifecycle policy still pauses stale failed runs and eventually deletes old review sandboxes.
 
 To deploy from the CLI:
 
@@ -208,10 +229,10 @@ Then use `${{ github.event.pull_request.number || inputs.pr_number }}` as the `p
 
 1. GitHub Action triggers on PR open (review), CI failure (babysit), or label/dispatch (verify)
 2. Review installs the Islo CLI, validates the deployed `islo-review` job, and starts a durable job run with `--watch`
-3. The deployed review job provisions its sandbox, clones this repo at the action ref, and runs `src/review.ts`
+3. The deployed review job ensures a PR-scoped sandbox, clones this repo at the action ref, and runs `src/review.ts`
 4. Babysit and verify still create sandboxes directly with `islo use`
-5. The scripts use the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) to analyze code and take action
-6. The job or action-owned cleanup destroys temporary sandboxes after completion
+5. The review script resumes the previous Claude Agent SDK session for that PR when one exists
+6. The job pauses reusable review sandboxes after success; consuming repo workflows should remove them on PR close
 
 ### Multi-Repo Verification
 
