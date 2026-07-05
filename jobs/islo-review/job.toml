@@ -55,7 +55,7 @@ snapshot_name = "islo-stack"
 vcpus = 4
 memory_mb = 4096
 gateway_profile = "default"
-init = { type = "minimal" }
+init = { type = "full" }
 
 [run.sandbox.lifecycle]
 pause_after = 1800
