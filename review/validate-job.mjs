@@ -14,10 +14,14 @@ const REQUIRED_PARAM_NAMES = new Set([
   "reviewer_ref",
 ]);
 
+function isObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
 export function validateReviewJob(job) {
   const errors = [];
 
-  if (!job || typeof job !== "object" || Array.isArray(job)) {
+  if (!isObject(job)) {
     return ["expected `islo job get` to return a JSON object"];
   }
 
@@ -45,6 +49,35 @@ export function validateReviewJob(job) {
     }
     if (REQUIRED_PARAM_NAMES.has(name) && param.required !== true) {
       errors.push(`param '${name}' must be required`);
+    }
+  }
+
+  const manifest = job.latest_version?.manifest;
+  if (!isObject(manifest)) {
+    errors.push("latest deployed version is missing manifest");
+  } else {
+    const sandbox = manifest.run?.sandbox;
+    if (!isObject(sandbox)) {
+      errors.push("manifest missing run.sandbox");
+    } else {
+      if (sandbox.mode !== "ensure") {
+        errors.push(
+          `manifest run.sandbox.mode must be 'ensure', got '${sandbox.mode}'`,
+        );
+      }
+      if (sandbox.name !== "{{sandbox_name}}") {
+        errors.push(
+          "manifest run.sandbox.name must be '{{sandbox_name}}' for stable routing",
+        );
+      }
+
+      const lifecycle = sandbox.lifecycle;
+      if (!isObject(lifecycle) || lifecycle.pause_after_idle == null) {
+        errors.push("manifest run.sandbox.lifecycle.pause_after_idle is required");
+      }
+      if (isObject(lifecycle) && lifecycle.pause_after != null) {
+        errors.push("manifest must use pause_after_idle, not pause_after");
+      }
     }
   }
 

@@ -58,7 +58,7 @@ gateway_profile = "default"
 init = { type = "full" }
 
 [run.sandbox.lifecycle]
-pause_after = 1800
+pause_after_idle = 1800
 delete_after = 604800
 
 [[run.tasks]]

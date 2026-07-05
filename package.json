@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test review/*.test.mjs",
     "review": "tsx src/review.ts",
     "babysit": "tsx src/babysit.ts",
     "verify": "tsx src/verify.ts"
