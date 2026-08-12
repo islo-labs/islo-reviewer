@@ -30,6 +30,19 @@ const EXPERIMENTAL_BETAS_DISABLED_MODELS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Model names the agent SDK resolves against Anthropic on its own: full IDs
+ * (`claude-opus-4-6`) and the family aliases (`opus`, `sonnet[1m]`, `default`).
+ */
+const ANTHROPIC_MODEL_PREFIXES = [
+  "claude-",
+  "opus",
+  "sonnet",
+  "haiku",
+  "default",
+  "inherit",
+];
+
+/**
  * Environment overrides for the spawned agent, or `undefined` when no provider
  * is configured (direct Anthropic, the default).
  *
@@ -41,7 +54,7 @@ export function buildProviderEnv(
   modelProvider: string | undefined
 ): Record<string, string> | undefined {
   if (!modelProvider) {
-    if (!model.startsWith("claude-")) {
+    if (!ANTHROPIC_MODEL_PREFIXES.some((p) => model.startsWith(p))) {
       console.warn(
         `Warning: model '${model}' does not look like an Anthropic model. ` +
           "Islo gateway models (kimi-*, minimax-*, qwen*, ship-like/*) need model_provider: islo_inference."
