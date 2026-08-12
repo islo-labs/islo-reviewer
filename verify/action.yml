@@ -33,9 +33,13 @@ inputs:
     required: false
     default: '16384'
   model:
-    description: 'Claude model to use (e.g., claude-opus-4-6, claude-sonnet-4)'
+    description: 'Model to use (e.g., claude-opus-4-6, or kimi-k2.7-code with model_provider: islo)'
     required: false
     default: 'claude-opus-4-6'
+  model_provider:
+    description: 'Set to "islo" to route inference through Islo gateway inference (Kimi, MiniMax, Qwen, ...) billed to Islo credits. Empty uses Anthropic directly.'
+    required: false
+    default: ''
   max_turns:
     description: 'Maximum agentic turns (tool-use round trips)'
     required: false
@@ -112,7 +116,8 @@ runs:
             "'"${{ inputs.model }}"'" \
             "'"${{ inputs.max_turns }}"'" \
             "'"${{ inputs.max_budget_usd }}"'" \
-            "'"${{ inputs.related_prs }}"'"
+            "'"${{ inputs.related_prs }}"'" \
+            "'"${{ inputs.model_provider }}"'"
         '
 
     - name: Cleanup

@@ -4,12 +4,14 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { ensureRepo, checkoutPR } from "./utils/git.js";
 import { getPRInfo } from "./utils/github.js";
+import { providerQueryEnv } from "./utils/inference.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [repo, prNumber, model, maxTurnsStr, maxBudgetStr] = process.argv.slice(2);
+const [repo, prNumber, model, maxTurnsStr, maxBudgetStr, modelProvider] =
+  process.argv.slice(2);
 if (!repo || !prNumber) {
-  console.error("Usage: tsx src/review.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd]");
+  console.error("Usage: tsx src/review.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd] [model-provider]");
   process.exit(1);
 }
 
@@ -35,6 +37,9 @@ if (existsSync(contextPath)) {
   contextSection = readFileSync(contextPath, "utf-8");
 }
 
+const resolvedModel = model || "claude-opus-4-6";
+const env = providerQueryEnv(resolvedModel, modelProvider);
+
 const prompt = promptTemplate
   .replaceAll("{{REPO}}", repo)
   .replaceAll("{{PR_NUMBER}}", prNumber)
@@ -49,8 +54,9 @@ for await (const message of query({
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
-    model: model || "claude-opus-4-6",
+    model: resolvedModel,
     ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
+    ...(env ? { env } : {}),
   },
 })) {
   if (message.type === "assistant") {
