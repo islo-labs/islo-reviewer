@@ -3,15 +3,23 @@ import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { getPRInfo } from "./utils/github.js";
+import { providerQueryEnv } from "./utils/inference.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const [repo, prNumber, model, maxTurnsStr, maxBudgetStr, relatedPrsStr] =
-  process.argv.slice(2);
+const [
+  repo,
+  prNumber,
+  model,
+  maxTurnsStr,
+  maxBudgetStr,
+  relatedPrsStr,
+  modelProvider,
+] = process.argv.slice(2);
 
 if (!repo || !prNumber) {
   console.error(
-    "Usage: tsx src/verify.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd] [related-prs]"
+    "Usage: tsx src/verify.ts <owner/repo> <pr-number> [model] [max-turns] [max-budget-usd] [related-prs] [model-provider]"
   );
   process.exit(1);
 }
@@ -40,6 +48,9 @@ for (const name of ["REVIEW.md", "VERIFY.md"]) {
   if (existsSync(p)) contextSection += readFileSync(p, "utf-8") + "\n";
 }
 
+const resolvedModel = model || "claude-opus-4-6";
+const env = providerQueryEnv(resolvedModel, modelProvider);
+
 const prompt = promptTemplate
   .replaceAll("{{REPO}}", repo)
   .replaceAll("{{REPO_SHORT}}", repoShort)
@@ -59,8 +70,9 @@ for await (const message of query({
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 80,
-    model: model || "claude-opus-4-6",
+    model: resolvedModel,
     ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
+    ...(env ? { env } : {}),
   },
 })) {
   if (message.type === "assistant") {

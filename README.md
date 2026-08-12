@@ -115,7 +115,8 @@ All actions share common inputs. Verify has additional inputs for stack boot con
 | `snapshot` | no | `''` (`islo-fullstack` for verify) | Sandbox snapshot name |
 | `cpu` | no | `4` (`8` for verify) | CPU cores for the sandbox |
 | `memory` | no | `4096` (`16384` for verify) | Memory in MB for the sandbox |
-| `model` | no | `claude-opus-4-6` | Claude model to use |
+| `model` | no | `claude-opus-4-6` | Model to use |
+| `model_provider` | no | `''` | `islo_inference` routes inference through [Islo gateway inference](#using-islo-inference-models); empty uses Anthropic directly |
 | `max_turns` | no | `50` (`80` for verify) | Maximum agentic turns |
 | `max_budget_usd` | no | `10` (`20` for verify) | Cost cap in USD |
 
@@ -158,6 +159,28 @@ If your sandbox needs sources, setup scripts, or other config from an `islo.yaml
 ```
 
 This checks out your repo on the runner so the config file is available, then passes `--config .github/islo-review.yaml` to `islo use`.
+
+### Using Islo inference models
+
+By default the agent uses Anthropic models, billed to the Anthropic integration connected to your Islo tenant. Set `model_provider: islo_inference` to run on an [Islo gateway inference](https://docs.islo.dev/getting-started/inference) model instead — Kimi, MiniMax, Qwen, and others — billed to your Islo credits:
+
+```yaml
+- uses: islo-labs/islo-reviewer/review@v1
+  with:
+    pr_number: ${{ github.event.pull_request.number }}
+    model: kimi-k2.7-code
+    model_provider: islo_inference
+  env:
+    ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
+```
+
+No extra credentials are needed. The action sets `ANTHROPIC_BASE_URL` to the Islo inference gateway, and the sandbox's egress proxy authenticates the request with the sandbox's own Islo identity.
+
+`GET https://api.islo.dev/inference/models` returns the current model list. Notes:
+
+- **Billing moves to Islo credits.** The tenant needs available credits, otherwise inference is rejected.
+- **`max_budget_usd` becomes approximate.** The agent SDK estimates cost with Anthropic pricing, so the reported spend and the cap are both off for non-Anthropic models. Use `max_turns` as the hard limit.
+- **Prompts are tuned for Opus-class models.** Expect weaker review discipline on smaller models; try it on one repo before switching a default.
 
 ### Cost control
 
