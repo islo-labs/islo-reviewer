@@ -3,7 +3,7 @@
  *
  * By default the agent talks to api.anthropic.com and the sandbox's egress
  * gateway injects the tenant's connected Anthropic credential. With
- * `model_provider: islo`, requests go to the Islo inference gateway instead,
+ * `model_provider: islo_inference`, requests go to the Islo inference gateway,
  * which serves non-Anthropic models (Kimi, MiniMax, Qwen, ...) over the
  * Anthropic-compatible wire protocol.
  *
@@ -13,12 +13,12 @@
  * identity. Usage bills to the tenant's Islo credits.
  */
 
-const ISLO_INFERENCE_BASE_URL = "https://gateway.islo.dev/inference/anthropic";
-
-/** Accepted `model_provider` values, mapped to their Anthropic-compatible base URL. */
+/**
+ * Accepted `model_provider` values, mapped to their Anthropic-compatible base
+ * URL. `islo_inference` matches the value islo-agents' job params use.
+ */
 const PROVIDER_BASE_URLS: Readonly<Record<string, string>> = {
-  islo: ISLO_INFERENCE_BASE_URL,
-  islo_inference: ISLO_INFERENCE_BASE_URL,
+  islo_inference: "https://gateway.islo.dev/inference/anthropic",
 };
 
 /**
@@ -44,7 +44,7 @@ export function buildProviderEnv(
     if (!model.startsWith("claude-")) {
       console.warn(
         `Warning: model '${model}' does not look like an Anthropic model. ` +
-          "Islo gateway models (kimi-*, minimax-*, qwen*, ship-like/*) need model_provider: islo."
+          "Islo gateway models (kimi-*, minimax-*, qwen*, ship-like/*) need model_provider: islo_inference."
       );
     }
     return undefined;

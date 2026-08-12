@@ -33,11 +33,11 @@ inputs:
     required: false
     default: '16384'
   model:
-    description: 'Model to use (e.g., claude-opus-4-6, or kimi-k2.7-code with model_provider: islo)'
+    description: 'Model to use (e.g., claude-opus-4-6, or kimi-k2.7-code with model_provider: islo_inference)'
     required: false
     default: 'claude-opus-4-6'
   model_provider:
-    description: 'Set to "islo" to route inference through Islo gateway inference (Kimi, MiniMax, Qwen, ...) billed to Islo credits. Empty uses Anthropic directly.'
+    description: 'Set to "islo_inference" to route inference through Islo gateway inference (Kimi, MiniMax, Qwen, ...) billed to Islo credits. Empty uses Anthropic directly.'
     required: false
     default: ''
   max_turns:

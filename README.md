@@ -116,7 +116,7 @@ All actions share common inputs. Verify has additional inputs for stack boot con
 | `cpu` | no | `4` (`8` for verify) | CPU cores for the sandbox |
 | `memory` | no | `4096` (`16384` for verify) | Memory in MB for the sandbox |
 | `model` | no | `claude-opus-4-6` | Model to use |
-| `model_provider` | no | `''` | `islo` routes inference through [Islo gateway inference](#using-islo-inference-models); empty uses Anthropic directly |
+| `model_provider` | no | `''` | `islo_inference` routes inference through [Islo gateway inference](#using-islo-inference-models); empty uses Anthropic directly |
 | `max_turns` | no | `50` (`80` for verify) | Maximum agentic turns |
 | `max_budget_usd` | no | `10` (`20` for verify) | Cost cap in USD |
 
@@ -162,14 +162,14 @@ This checks out your repo on the runner so the config file is available, then pa
 
 ### Using Islo inference models
 
-By default the agent uses Anthropic models, billed to the Anthropic integration connected to your Islo tenant. Set `model_provider: islo` to run on an [Islo gateway inference](https://docs.islo.dev/getting-started/inference) model instead — Kimi, MiniMax, Qwen, and others — billed to your Islo credits:
+By default the agent uses Anthropic models, billed to the Anthropic integration connected to your Islo tenant. Set `model_provider: islo_inference` to run on an [Islo gateway inference](https://docs.islo.dev/getting-started/inference) model instead — Kimi, MiniMax, Qwen, and others — billed to your Islo credits:
 
 ```yaml
 - uses: islo-labs/islo-reviewer/review@v1
   with:
     pr_number: ${{ github.event.pull_request.number }}
     model: kimi-k2.7-code
-    model_provider: islo
+    model_provider: islo_inference
   env:
     ISLO_API_KEY: ${{ secrets.ISLO_API_KEY }}
 ```
