@@ -5,6 +5,7 @@ import { dirname, join } from "path";
 import { ensureRepo, checkoutPR } from "./utils/git.js";
 import { getPRInfo } from "./utils/github.js";
 import { providerQueryEnv } from "./utils/inference.js";
+import { parseTurns, parseBudget } from "./utils/args.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -53,9 +54,11 @@ for await (const message of query({
     cwd,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
-    maxTurns: maxTurnsStr ? parseInt(maxTurnsStr, 10) : 50,
+    maxTurns: parseTurns(maxTurnsStr, 50),
     model: resolvedModel,
-    ...(maxBudgetStr ? { maxBudgetUsd: parseFloat(maxBudgetStr) } : {}),
+    ...(parseBudget(maxBudgetStr) !== undefined
+      ? { maxBudgetUsd: parseBudget(maxBudgetStr)! }
+      : {}),
     ...(env ? { env } : {}),
   },
 })) {
